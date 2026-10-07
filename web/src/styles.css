@@ -129,3 +129,19 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .btn:disabled, select:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
 .match { margin-top: 6px; color: var(--ink-2); max-width: 70ch; font-size: 13px; }
 .match b { color: var(--ink); }
+
+.wf { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 150px; }
+.wf select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.verdict { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn.small { padding: 3px 9px; font-size: 12px; }
+.btn.on { background: var(--series-1); border-color: transparent; color: #fff; font-weight: 600; }
+.linkish { background: none; border: 0; padding: 0; color: var(--series-1); cursor: pointer; font-size: 13px; text-decoration: underline; }
+.notes { border-left: 2px solid var(--border); padding-left: 10px; font-size: 13px; max-width: 34ch; }
+.notes p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.notes form { display: flex; gap: 6px; }
+.notes input { flex: 1; min-width: 0; padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.tab { background: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; cursor: pointer; color: var(--ink-2); }
+.tab.on { background: var(--ghost); color: var(--ink); font-weight: 600; }
+.feedback { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; max-width: 80ch; }
+.feedback p { margin: 4px 0 0; color: var(--ink-2); }

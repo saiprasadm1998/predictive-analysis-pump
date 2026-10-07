@@ -34,6 +34,18 @@ export interface Reading {
 
 export interface Me { username: string; role: 'viewer' | 'operator' | 'admin' }
 
+export type Workflow = 'new' | 'investigating' | 'resolved'
+export type Label = 'real_issue' | 'false_alarm'
+export interface AlertComment { id: string; by: string; at: string; text: string }
+
+export interface Feedback {
+  real: number
+  falseAlarms: number
+  unlabelled: number
+  suggestion: null | { level: number; silenced: number; falseAlarms: number; lost: number; real: number }
+  note: string
+}
+
 export interface Alert {
   id: string
   start: string
@@ -49,6 +61,10 @@ export interface Alert {
   acknowledgedBy?: string
   acknowledgedAt?: string
   match?: Match | null
+  workflow: Workflow
+  label: Label | null
+  labelledBy?: string
+  comments: AlertComment[]
 }
 
 export interface ReplayState {

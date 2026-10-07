@@ -1,4 +1,4 @@
-import type { Alert, FailureCatalog, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
+import type { Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
 
 let token: string | null = null
 try { token = localStorage.getItem('pg_token') } catch { /* storage unavailable */ }
@@ -40,6 +40,11 @@ export const api = {
   meta: () => call<Meta>('/api/meta'),
   scenarios: () => call<Scenario[]>('/api/scenarios'),
   alerts: () => call<Alert[]>('/api/alerts'),
+  feedback: () => call<Feedback>('/api/feedback'),
+  workflow: (id: string, body: { workflow?: Workflow; label?: Label | null }) =>
+    call<Alert>(`/api/alerts/${id}/workflow`, { method: 'POST', body: JSON.stringify(body) }),
+  comment: (id: string, text: string) =>
+    call<Alert>(`/api/alerts/${id}/comments`, { method: 'POST', body: JSON.stringify({ text }) }),
   ack: (id: string) => call<Alert>(`/api/alerts/${id}/ack`, { method: 'POST' }),
   play: () => post({ action: 'play' }),
   pause: () => post({ action: 'pause' }),

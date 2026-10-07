@@ -5,6 +5,14 @@
 Predictive-maintenance dashboard for oil & gas pumps. Learns what healthy operation looks like from
 51 sensors, scores every reading, and warns before failures.
 
+## Features
+
+- Live replay of recorded sensor history, with a health score, root-cause bars and sensor drill-down.
+- Failure pattern matching: each alert is compared with the fingerprints of failures that already happened.
+- Alert workflow: operators move alerts through New, Investigating and Resolved, add notes, and mark each one as a
+  real issue or a false alarm. Once three or more alerts are labelled, a hint suggests an alarm level that would have
+  silenced the false alarms without losing the real issues. It is a suggestion to test, not applied automatically.
+
 Stack: React + TypeScript (web), Node + TypeScript (api), Python + scikit-learn + FastAPI (ml).
 
 Dataset: Kaggle "Pump Sensor Data" (`sensor.csv`, about 124 MB). It is not committed: GitHub rejects files over
@@ -43,6 +51,6 @@ Threshold and training data come from the same period, so treat results as optim
 3. Start the API. Alerts, acknowledgements, users and model runs are now stored in the `pump_guardian` database.
 4. Check the Atlas code against your cluster: `cd api && npm run test:atlas` (uses a throwaway database).
 
-Roles: `viewer` (read only), `operator` (replay control, acknowledge alerts), `admin` (also manage users via `POST /api/users`).
+Roles: `viewer` (read only), `operator` (replay control, alert status, verdicts and notes), `admin` (also manage users via `POST /api/users`).
 
 Runs locally; MongoDB Atlas is optional.

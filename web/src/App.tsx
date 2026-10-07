@@ -3,11 +3,12 @@ import Login from './components/Login'
 import LineChart from './components/LineChart'
 import BarList from './components/BarList'
 import FailureCatalog, { MatchLine } from './components/FailureCatalog'
+import { AlertWorkflow, FeedbackNote, WORKFLOW_TEXT, type WorkflowActions } from './components/AlertWorkflow'
 import StateBadge, { STATE_META, StateIcon } from './components/StateBadge'
 import { clearToken, hasToken } from './lib/api'
 import { useLive } from './lib/useLive'
 import { parseT, shortDateTime, sensorName } from './lib/time'
-import type { Alert } from './lib/types'
+import type { Alert, Workflow } from './lib/types'
 
 const SPEEDS = [10, 30, 60, 120, 360]
 
@@ -35,6 +36,8 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const theme = useTheme()
   const [table, setTable] = useState(false)
   const [scrub, setScrub] = useState<number | null>(null)
+  const [filter, setFilter] = useState<'all' | Workflow>('all')
+  const shown = filter === 'all' ? alerts : alerts.filter((a) => a.workflow === filter)
 
   const markers = useMemo(
     () => (meta?.evaluation.failures ?? []).map((f) => ({ x: parseT(f.failure), label: 'Failure' })),
@@ -183,10 +186,20 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
       <section className="card" style={{ marginTop: 16 }}>
         <h2>Alerts</h2>
         <p className="sub">An alert opens when readings stay above the alarm level for 30 minutes, and closes after 3 calm hours.</p>
+        <FeedbackNote f={live.feedback} />
+        {alerts.length > 0 && (
+          <div className="tabs" role="tablist" aria-label="Filter alerts">
+            {(['all', 'new', 'investigating', 'resolved'] as const).map((f) => (
+              <button key={f} role="tab" aria-selected={filter === f} className={`tab${filter === f ? ' on' : ''}`} onClick={() => setFilter(f)}>
+                {f === 'all' ? 'All' : WORKFLOW_TEXT[f]} <span className="hint">{f === 'all' ? alerts.length : alerts.filter((a) => a.workflow === f).length}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {alerts.length === 0 ? <div className="empty">No alerts yet. Press Play, or jump to a failure run-up.</div> : (
           <div className="table-wrap"><table>
-            <thead><tr><th>Alert</th><th>Opened</th><th className="num">Peak</th><th>Outcome</th><th /></tr></thead>
-            <tbody>{alerts.map((a) => <AlertRow key={a.id} a={a} onAck={live.ack} canAct={canAct} thresholds={catalog?.thresholds} />)}</tbody>
+            <thead><tr><th>Alert</th><th>Opened</th><th className="num">Peak</th><th>Outcome</th><th>Status and verdict</th></tr></thead>
+            <tbody>{shown.map((a) => <AlertRow key={a.id} a={a} actions={live} canAct={canAct} thresholds={catalog?.thresholds} />)}</tbody>
           </table></div>
         )}
       </section>
@@ -201,7 +214,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   )
 }
 
-function AlertRow({ a, onAck, canAct, thresholds }: { a: Alert; onAck: (id: string) => void; canAct: boolean; thresholds?: { possible: number; strong: number } }) {
+function AlertRow({ a, actions, canAct, thresholds }: { a: Alert; actions: WorkflowActions; canAct: boolean; thresholds?: { possible: number; strong: number } }) {
   const st = a.severity === 'critical' ? 'critical' : 'warning'
   return (
     <tr>
@@ -213,7 +226,7 @@ function AlertRow({ a, onAck, canAct, thresholds }: { a: Alert; onAck: (id: stri
       <td>{shortDateTime(parseT(a.start))}<div className="hint">{a.status === 'open' ? 'ongoing' : `closed ${shortDateTime(parseT(a.end!))}`}</div></td>
       <td className="num">{a.peakRatio.toFixed(1)}×</td>
       <td>{a.recovery ? 'Pump restarting after a recorded failure' : a.failureAfterHours ? `Failure followed ${a.failureAfterHours} h later` : a.status === 'open' ? 'In progress' : 'No failure within 72 h'}</td>
-      <td>{a.acknowledged ? <span className="pill">Acknowledged{a.acknowledgedBy ? ` by ${a.acknowledgedBy}` : ''}</span> : canAct ? <button className="btn" onClick={() => onAck(a.id)}>Acknowledge</button> : null}</td>
+      <td><AlertWorkflow a={a} actions={actions} canAct={canAct} /></td>
     </tr>
   )
 }

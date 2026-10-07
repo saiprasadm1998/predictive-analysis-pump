@@ -1,4 +1,4 @@
-import type { Alert, ModelRun, Role, User } from "../types.js";
+import type { Alert, Comment, Label, ModelRun, Role, User, Workflow } from "../types.js";
 
 export interface Store {
   readonly kind: "mongo" | "memory";
@@ -11,12 +11,15 @@ export interface Store {
     list(): Promise<Omit<User, "passwordHash">[]>;
   };
   alerts: {
-    /** Insert or update by id; never overwrites acknowledgement fields. */
+    /** Insert or update by id; never overwrites acknowledgement or workflow fields. */
     upsert(a: Alert): Promise<void>;
     get(id: string): Promise<Alert | null>;
     /** Alerts that started at or before `upTo` (replay time), newest first. */
     list(upTo?: string): Promise<Alert[]>;
     ack(id: string, by: string): Promise<Alert | null>;
+    /** Operator changes: status and/or verdict. Null label clears it. */
+    setWorkflow(id: string, patch: { workflow?: Workflow; label?: Label | null }, by: string): Promise<Alert | null>;
+    addComment(id: string, c: Comment): Promise<Alert | null>;
   };
   modelRuns: {
     record(r: ModelRun): Promise<void>;

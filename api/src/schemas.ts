@@ -21,3 +21,10 @@ export const readingsQuery = z.object({
   start: ts, end: ts, step: z.coerce.number().int().min(1).max(1440).default(15),
   sensors: z.string().regex(/^sensor_\d{2}(,sensor_\d{2}){0,5}$/),
 });
+
+export const workflowBody = z.object({
+  workflow: z.enum(["new", "investigating", "resolved"]).optional(),
+  label: z.enum(["real_issue", "false_alarm"]).nullable().optional(),
+}).refine((b) => b.workflow !== undefined || b.label !== undefined, { message: "nothing to change" });
+
+export const commentBody = z.object({ text: z.string().trim().min(1).max(1000) });

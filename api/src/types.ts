@@ -41,6 +41,11 @@ export interface ModelRun {
   healthyFalseAlarmEpisodes: number;
 }
 
+export type Workflow = "new" | "investigating" | "resolved";
+export type Label = "real_issue" | "false_alarm";
+
+export interface Comment { id: string; by: string; at: string; text: string }
+
 export interface Alert {
   id: string;           // deterministic from the start time, so replays never duplicate alerts
   start: string;
@@ -56,4 +61,8 @@ export interface Alert {
   acknowledgedBy?: string;
   acknowledgedAt?: string;
   match?: Match | null;  // closest recorded failure at the alert's peak
+  workflow: Workflow;    // operator-driven; independent of open/closed (which the model decides)
+  label: Label | null;   // operator verdict, used for tuning feedback
+  labelledBy?: string;
+  comments: Comment[];
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, connectLive } from './api'
-import type { Alert, FailureCatalog, Me, Meta, Reading, ReplayState, Scenario, Series } from './types'
+import type { Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, Series } from './types'
 import { HOUR, fmtT, parseT } from './time'
 import type { Pt } from '../components/LineChart'
 
@@ -17,6 +17,7 @@ export function useLive(onAuthLost: () => void) {
   const [sensors, setSensors] = useState<Series | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   const [catalog, setCatalog] = useState<FailureCatalog | null>(null)
+  const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [error, setError] = useState('')
   const lastX = useRef(0)
   const sensorKey = useRef('')
@@ -91,6 +92,17 @@ export function useLive(onAuthLost: () => void) {
     }
   }, [key, reading, loadSensors])
 
+  // the tuning hint depends only on how alerts have been labelled
+  const labelSig = alerts.map((a) => `${a.id}:${a.label ?? ''}`).join('|')
+  useEffect(() => {
+    if (!me) return
+    api.feedback().then(setFeedback).catch(() => { /* hint is optional */ })
+  }, [labelSig, me])
+
+  const patch = useCallback(async (fn: () => Promise<Alert>) => {
+    try { const a = await fn(); setAlerts((p) => p.map((x) => (x.id === a.id ? a : x))) } catch (e) { fail(e) }
+  }, [fail])
+
   const act = useCallback(async (fn: () => Promise<ReplayState>, reloadAlerts = false) => {
     try {
       setReplay(await fn())
@@ -99,7 +111,7 @@ export function useLive(onAuthLost: () => void) {
   }, [fail])
 
   return {
-    me, catalog, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
+    me, catalog, feedback, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
     play: () => act(api.play), pause: () => act(api.pause),
     setSpeed: (n: number) => act(() => api.speed(n)),
     seek: (t: string) => act(() => api.seek(t), true),
@@ -107,6 +119,9 @@ export function useLive(onAuthLost: () => void) {
       await act(() => api.seek(s.startAt), true)
       await act(() => api.play())
     },
+    setWorkflow: (id: string, workflow: Workflow) => patch(() => api.workflow(id, { workflow })),
+    setLabel: (id: string, label: Label | null) => patch(() => api.workflow(id, { label })),
+    comment: (id: string, text: string) => patch(() => api.comment(id, text)),
     ack: async (id: string) => {
       try { const a = await api.ack(id); setAlerts((p) => p.map((x) => (x.id === a.id ? a : x))) } catch (e) { fail(e) }
     },

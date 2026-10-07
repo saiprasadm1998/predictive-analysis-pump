@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import type { ZodType } from "zod";
 import { config } from "./config.js";
@@ -8,7 +9,8 @@ import { clearFailures, hashPassword, login, recordFailure, requireAuth, require
 import { ml } from "./ml.js";
 import { Replay } from "./replay.js";
 import { createStore, DuplicateError } from "./store/index.js";
-import { createUserBody, loginBody, readingsQuery, replayBody, scoresQuery } from "./schemas.js";
+import { commentBody, createUserBody, loginBody, readingsQuery, replayBody, scoresQuery, workflowBody } from "./schemas.js";
+import { feedback } from "./feedback.js";
 import type { Alert } from "./types.js";
 
 const store = createStore();
@@ -73,6 +75,21 @@ app.post("/api/alerts/:id/ack", requireRole("operator"), wrap(async (req, res) =
   const a = await store.alerts.ack(String(req.params.id), req.session!.sub);
   a ? res.json(a) : res.status(404).json({ error: "not found" });
 }));
+
+app.post("/api/alerts/:id/workflow", requireRole("operator"), wrap(async (req, res) => {
+  const body = workflowBody.safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: body.error.issues[0]?.message ?? "invalid" });
+  const a = await store.alerts.setWorkflow(String(req.params.id), body.data, req.session!.sub);
+  a ? (send("alert", a), res.json(a)) : res.status(404).json({ error: "not found" });
+}));
+app.post("/api/alerts/:id/comments", requireRole("operator"), wrap(async (req, res) => {
+  const body = commentBody.safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "comment must be 1-1000 characters" });
+  const c = { id: randomUUID(), by: req.session!.sub, at: new Date().toISOString(), text: body.data.text };
+  const a = await store.alerts.addComment(String(req.params.id), c);
+  a ? (send("alert", a), res.json(a)) : res.status(404).json({ error: "not found" });
+}));
+app.get("/api/feedback", wrap(async (_req, res) => res.json(feedback(await store.alerts.list(replay.state().t)))));
 
 app.get("/api/model-runs", wrap(async (_req, res) => res.json(await store.modelRuns.list())));
 

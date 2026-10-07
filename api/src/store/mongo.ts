@@ -1,6 +1,6 @@
 import { MongoClient, MongoServerError, type Collection, type Db } from "mongodb";
 import { DuplicateError, type Store } from "./types.js";
-import type { Alert, ModelRun, User } from "../types.js";
+import type { Alert, Comment, Label, ModelRun, User, Workflow } from "../types.js";
 
 /** MongoDB-backed store (works with Atlas). `_id` is used for natural keys. */
 export function mongoStore(uri: string, dbName = "pump_guardian"): Store {
@@ -46,10 +46,10 @@ export function mongoStore(uri: string, dbName = "pump_guardian"): Store {
     },
     alerts: {
       async upsert(a) {
-        const { acknowledged: _a, acknowledgedBy: _b, acknowledgedAt: _c, id, ...fields } = a;
+        const { acknowledged: _a, acknowledgedBy: _b, acknowledgedAt: _c, workflow: _w, label: _l, labelledBy: _lb, comments: _cm, id, ...fields } = a;
         await alerts.updateOne(
           { _id: id },
-          { $set: { ...fields, id }, $setOnInsert: { acknowledged: false } },
+          { $set: { ...fields, id }, $setOnInsert: { acknowledged: false, workflow: "new", label: null, comments: [] } },
           { upsert: true },
         );
       },
@@ -64,6 +64,35 @@ export function mongoStore(uri: string, dbName = "pump_guardian"): Store {
           { $set: { acknowledged: true, acknowledgedBy: by, acknowledgedAt: new Date().toISOString() } },
           { returnDocument: "after" },
         );
+        // a plain acknowledge moves a new alert to "investigating", but never rewinds a resolved one
+        if (doc && doc.workflow === "new") {
+          const moved = await alerts.findOneAndUpdate({ _id: id, workflow: "new" }, { $set: { workflow: "investigating" } }, { returnDocument: "after" });
+          return strip(moved ?? doc) as Alert | null;
+        }
+        return strip(doc) as Alert | null;
+      },
+      async setWorkflow(id, patch, by) {
+        const set: Record<string, unknown> = {};
+        const unset: Record<string, ""> = {};
+        if (patch.workflow) set.workflow = patch.workflow;
+        if (patch.label !== undefined) {
+          set.label = patch.label;
+          if (patch.label) set.labelledBy = by; else unset.labelledBy = "";
+        }
+        const doc = await alerts.findOneAndUpdate(
+          { _id: id },
+          { ...(Object.keys(set).length ? { $set: set } : {}), ...(Object.keys(unset).length ? { $unset: unset } : {}) },
+          { returnDocument: "after" },
+        );
+        if (doc && patch.workflow && !doc.acknowledged) {
+          const acked = await alerts.findOneAndUpdate({ _id: id },
+            { $set: { acknowledged: true, acknowledgedBy: by, acknowledgedAt: new Date().toISOString() } }, { returnDocument: "after" });
+          return strip(acked ?? doc) as Alert | null;
+        }
+        return strip(doc) as Alert | null;
+      },
+      async addComment(id, c) {
+        const doc = await alerts.findOneAndUpdate({ _id: id }, { $push: { comments: c } }, { returnDocument: "after" });
         return strip(doc) as Alert | null;
       },
     },

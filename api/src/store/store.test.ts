@@ -7,7 +7,7 @@ import type { Alert } from "../types.js";
 const alert = (start: string, over: Partial<Alert> = {}): Alert => ({
   id: "a" + start.replace(/\D/g, ""), start, end: null, peakRatio: 1.4, severity: "warning", status: "open",
   acknowledged: false, topSensors: [{ sensor: "sensor_04", share: 0.5 }], summary: "s", failureAfterHours: null,
-  recovery: false, ...over,
+  recovery: false, workflow: "new", label: null, comments: [], ...over,
 });
 
 // The same contract runs against memory always, and against MongoDB/Atlas when TEST_MONGODB_URI is set.
@@ -47,6 +47,29 @@ describe.each(targets)("store contract: %s", (_name, make) => {
 
   it("returns null when acknowledging an unknown alert", async () => {
     expect(await store.alerts.ack("nope", "sai")).toBeNull();
+  });
+
+  it("keeps workflow, verdict and comments across model re-upserts", async () => {
+    const id = "a20180516071800";
+    const w = await store.alerts.setWorkflow(id, { workflow: "resolved", label: "real_issue" }, "sai");
+    expect(w).toMatchObject({ workflow: "resolved", label: "real_issue", labelledBy: "sai", acknowledged: true });
+    await store.alerts.addComment(id, { id: "c1", by: "sai", at: "2026-10-07T10:00:00Z", text: "bearing swapped" });
+    await store.alerts.upsert(alert("2018-05-16 07:18:00", { peakRatio: 3 }));
+    const a = await store.alerts.get(id);
+    expect(a).toMatchObject({ workflow: "resolved", label: "real_issue", peakRatio: 3 });
+    expect(a?.comments.map((c) => c.text)).toEqual(["bearing swapped"]);
+    const cleared = await store.alerts.setWorkflow(id, { label: null }, "sai");
+    expect(cleared?.label).toBeNull();
+    expect(cleared?.workflow).toBe("resolved");
+  });
+
+  it("acknowledging moves a new alert to investigating but never rewinds a resolved one", async () => {
+    await store.alerts.upsert(alert("2018-07-01 00:00:00"));
+    expect((await store.alerts.ack("a20180701000000", "sai"))?.workflow).toBe("investigating");
+    await store.alerts.setWorkflow("a20180701000000", { workflow: "resolved" }, "sai");
+    expect((await store.alerts.ack("a20180701000000", "sai"))?.workflow).toBe("resolved");
+    expect(await store.alerts.setWorkflow("nope", { workflow: "resolved" }, "sai")).toBeNull();
+    expect(await store.alerts.addComment("nope", { id: "x", by: "s", at: "t", text: "t" })).toBeNull();
   });
 
   it("records each model run once", async () => {

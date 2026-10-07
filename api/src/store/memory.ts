@@ -1,5 +1,5 @@
 import { DuplicateError, type Store } from "./types.js";
-import type { Alert, ModelRun, User } from "../types.js";
+import type { Alert, Comment, Label, ModelRun, User, Workflow } from "../types.js";
 
 /** In-memory store: used when MONGODB_URI is not set, and in tests. */
 export function memoryStore(): Store {
@@ -26,7 +26,9 @@ export function memoryStore(): Store {
       async upsert(a) {
         const old = alerts.get(a.id);
         alerts.set(a.id, { ...a, acknowledged: old?.acknowledged ?? false,
-          acknowledgedBy: old?.acknowledgedBy, acknowledgedAt: old?.acknowledgedAt });
+          acknowledgedBy: old?.acknowledgedBy, acknowledgedAt: old?.acknowledgedAt,
+          workflow: old?.workflow ?? "new", label: old?.label ?? null, labelledBy: old?.labelledBy,
+          comments: old?.comments ?? [] });
       },
       async get(id) { return alerts.get(id) ?? null; },
       async list(upTo) {
@@ -35,7 +37,27 @@ export function memoryStore(): Store {
       async ack(id, by) {
         const a = alerts.get(id);
         if (!a) return null;
-        const next = { ...a, acknowledged: true, acknowledgedBy: by, acknowledgedAt: new Date().toISOString() };
+        const next: Alert = { ...a, acknowledged: true, acknowledgedBy: by, acknowledgedAt: new Date().toISOString(),
+          workflow: a.workflow === "new" ? "investigating" : a.workflow };
+        alerts.set(id, next);
+        return next;
+      },
+      async setWorkflow(id, patch, by) {
+        const a = alerts.get(id);
+        if (!a) return null;
+        const next: Alert = { ...a };
+        if (patch.workflow) {
+          next.workflow = patch.workflow;
+          if (!next.acknowledged) { next.acknowledged = true; next.acknowledgedBy = by; next.acknowledgedAt = new Date().toISOString(); }
+        }
+        if (patch.label !== undefined) { next.label = patch.label; next.labelledBy = patch.label ? by : undefined; }
+        alerts.set(id, next);
+        return next;
+      },
+      async addComment(id, c) {
+        const a = alerts.get(id);
+        if (!a) return null;
+        const next: Alert = { ...a, comments: [...a.comments, c] };
         alerts.set(id, next);
         return next;
       },

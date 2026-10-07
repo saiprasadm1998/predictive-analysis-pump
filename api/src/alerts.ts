@@ -23,6 +23,7 @@ export class AlertEngine {
         severity: r.ratio > 2 ? "critical" : "warning", status: "open", acknowledged: false,
         topSensors: r.top_sensors, summary: "", failureAfterHours: null,
         recovery: this.inRecovery(r.t), match: r.match,
+        workflow: "new", label: null, comments: [],
       };
       a.summary = summarise(a.severity, a.peakRatio, a.topSensors, r.t);
       this.alerts.unshift(a);
