@@ -182,3 +182,17 @@ tr.now td { background: var(--ghost); }
 .wo-form input, .wo-form textarea, .wo-form select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
 .wo-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
 .wo-row label { flex: 1 1 140px; }
+
+.report-tools { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.report-tools label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.report-tools select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.narrative p { margin: 0 0 8px; max-width: 80ch; }
+.report .head { flex-wrap: wrap; }
+code { background: var(--ghost); padding: 1px 5px; border-radius: 4px; }
+@media print {
+  body { background: #fff; color: #000; }
+  header.top, .controls, .no-print, .banner { display: none !important; }
+  .card { border: 0; padding: 0; break-inside: avoid; }
+  .report-body .table-wrap { overflow: visible; }
+  a { color: inherit; }
+}

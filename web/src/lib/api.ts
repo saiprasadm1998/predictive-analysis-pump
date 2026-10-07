@@ -1,4 +1,4 @@
-import type { CurveRow, NewWorkOrder, Suggestion, WorkOrder, WorkOrderPatch, ModelRun, Preview, RetrainResult, Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
+import type { NotifyStatus, ShiftReport, CurveRow, NewWorkOrder, Suggestion, WorkOrder, WorkOrderPatch, ModelRun, Preview, RetrainResult, Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
 
 let token: string | null = null
 try { token = localStorage.getItem('pg_token') } catch { /* storage unavailable */ }
@@ -49,6 +49,9 @@ export const api = {
   workOrders: () => call<WorkOrder[]>('/api/work-orders'),
   createWorkOrder: (b: NewWorkOrder) => call<WorkOrder>('/api/work-orders', { method: 'POST', body: JSON.stringify(b) }),
   updateWorkOrder: (id: string, b: WorkOrderPatch) => call<WorkOrder>(`/api/work-orders/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  shiftReport: (hours: number) => call<ShiftReport>(`/api/reports/shift?hours=${hours}`),
+  notifications: () => call<NotifyStatus>('/api/notifications'),
+  testNotification: () => call<NotifyStatus>('/api/notifications/test', { method: 'POST', body: '{}' }),
   feedback: () => call<Feedback>('/api/feedback'),
   workflow: (id: string, body: { workflow?: Workflow; label?: Label | null }) =>
     call<Alert>(`/api/alerts/${id}/workflow`, { method: 'POST', body: JSON.stringify(body) }),
@@ -76,4 +79,16 @@ export function connectLive(onMessage: (m: LiveMessage) => void, onClose: () => 
   ws.onmessage = (e) => onMessage(JSON.parse(e.data) as LiveMessage)
   ws.onclose = onClose
   return () => { ws.onclose = null; ws.close() }
+}
+
+/** Download a protected file: the link itself cannot send the sign-in header, so fetch it and save the blob. */
+export async function download(path: string, filename: string): Promise<void> {
+  const res = await fetch(path, { headers: token ? { authorization: `Bearer ${token}` } : {} })
+  if (res.status === 401) { clearToken(); throw new Error('unauthorised') }
+  if (!res.ok) throw new Error(`${path} failed (${res.status})`)
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url; a.download = filename
+  document.body.appendChild(a); a.click(); a.remove()
+  URL.revokeObjectURL(url)
 }

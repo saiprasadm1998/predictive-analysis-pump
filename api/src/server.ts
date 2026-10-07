@@ -9,14 +9,29 @@ import { clearFailures, hashPassword, login, recordFailure, requireAuth, require
 import { ml } from "./ml.js";
 import { Replay } from "./replay.js";
 import { createStore, DuplicateError } from "./store/index.js";
-import { commentBody, createUserBody, createWorkOrderBody, updateWorkOrderBody, workOrdersQuery, loginBody, levelBody, previewQuery, readingsQuery, replayBody, scoresQuery, workflowBody } from "./schemas.js";
+import { commentBody, createUserBody, createWorkOrderBody, updateWorkOrderBody, workOrdersQuery, reportQuery, loginBody, levelBody, previewQuery, readingsQuery, replayBody, scoresQuery, workflowBody } from "./schemas.js";
 import { feedback } from "./feedback.js";
 import { runFrom, verdictWindows } from "./modelRuns.js";
+import { Notifier } from "./notify.js";
+import { alertsCsv, buildReport, fmtT, parseT, workOrdersCsv } from "./reports.js";
 import { loadSensorMap, suggest, type PastWork } from "./suggestions.js";
 import type { Alert } from "./types.js";
 
 const store = createStore();
 const sensorMap = loadSensorMap(config.sensorMapPath);
+
+/** A webhook must be https, or http to this machine for local testing. Anything else disables notifications. */
+function webhookUrl(raw: string): string {
+  if (!raw) return "";
+  try {
+    const u = new URL(raw);
+    if (u.protocol === "https:" || (u.protocol === "http:" && ["localhost", "127.0.0.1"].includes(u.hostname))) return u.toString();
+  } catch { /* fall through */ }
+  console.warn("SLACK_WEBHOOK_URL is not a valid https URL; notifications are off");
+  return "";
+}
+const notifier = new Notifier({ url: webhookUrl(config.slackWebhookUrl), minSeverity: config.notifyMinSeverity,
+  dashboardUrl: config.publicUrl, maxPerMinute: config.notifyMaxPerMinute });
 const replay = new Replay();
 const app = express();
 app.use(cors());
@@ -131,6 +146,29 @@ app.patch("/api/work-orders/:id", requireRole("operator"), wrap(async (req, res)
   res.json(await store.workOrders.update(id, b.data));
 }));
 
+app.get("/api/reports/shift", wrap(async (req, res) => {
+  const q = reportQuery.safeParse(req.query);
+  if (!q.success) return res.status(400).json({ error: "hours must be between 1 and 72" });
+  const to = replay.state().t;
+  const from = fmtT(parseT(to) - q.data.hours * 3600e3);
+  const step = q.data.hours <= 24 ? 10 : 30;
+  const [points, alerts, orders] = await Promise.all([ml.scores(from, to, step), store.alerts.list(to), store.workOrders.list()]);
+  res.json(buildReport(to, q.data.hours, points, alerts, orders));
+}));
+const csv = (res: express.Response, name: string, body: string) => {
+  res.setHeader("content-type", "text/csv; charset=utf-8");
+  res.setHeader("content-disposition", `attachment; filename="${name}"`);
+  res.send(body);
+};
+app.get("/api/reports/alerts.csv", wrap(async (_req, res) => csv(res, "alerts.csv", alertsCsv(await store.alerts.list(replay.state().t)))));
+app.get("/api/reports/work-orders.csv", wrap(async (_req, res) => csv(res, "work-orders.csv", workOrdersCsv(await store.workOrders.list()))));
+
+app.get("/api/notifications", (_req, res) => res.json(notifier.status()));
+app.post("/api/notifications/test", requireRole("admin"), wrap(async (_req, res) => {
+  try { await notifier.test(); res.json(notifier.status()); }
+  catch (e) { res.status(502).json({ error: (e as Error).message }); }
+}));
+
 app.get("/api/model/preview", wrap(async (req, res) => {
   const q = previewQuery.safeParse(req.query);
   if (!q.success) return res.status(400).json({ error: "level must be between 0.3 and 5" });
@@ -194,7 +232,7 @@ wss.on("connection", (ws, req) => {
 replay.on("reading", (r) => send("reading", r));
 replay.on("alert", (a: Alert) => {
   // persist first, then tell clients; the stored copy keeps any acknowledgement
-  store.alerts.upsert(a).then(() => store.alerts.get(a.id)).then((saved) => send("alert", saved ?? a))
+  store.alerts.upsert(a).then(() => store.alerts.get(a.id)).then((saved) => { send("alert", saved ?? a); void notifier.onAlert(saved ?? a); })
     .catch((e: Error) => console.error("alert save failed:", e.message));
 });
 replay.on("state", (s) => send("state", s));

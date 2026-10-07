@@ -50,3 +50,5 @@ export const workOrdersQuery = z.object({
   alertId: z.string().max(40).optional(),
   status: z.enum(["open", "in_progress", "done"]).optional(),
 });
+
+export const reportQuery = z.object({ hours: z.coerce.number().int().min(1).max(72).default(8) });

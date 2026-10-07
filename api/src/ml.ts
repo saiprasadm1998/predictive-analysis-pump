@@ -63,7 +63,7 @@ export const ml = {
   meta: () => get<Meta>("/meta"),
   at: (t: string) => get<Reading>("/at", { t }),
   scores: (start: string, end: string, step: number) =>
-    get<unknown[]>("/scores", { start, end, step }),
+    get<{ t: string; health: number; ratio: number }[]>("/scores", { start, end, step }),
   readings: (start: string, end: string, sensors: string, step: number) =>
     get<Record<string, unknown>>("/readings", { start, end, sensors, step }),
   alerts: () => get<unknown[]>("/alerts"),

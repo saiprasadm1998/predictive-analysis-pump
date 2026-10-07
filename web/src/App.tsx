@@ -4,6 +4,7 @@ import LineChart from './components/LineChart'
 import BarList from './components/BarList'
 import FailureCatalog, { MatchLine } from './components/FailureCatalog'
 import ModelPage from './components/ModelPage'
+import ReportsPage from './components/Reports'
 import MaintenancePage, { AlertActions, type WorkActions } from './components/Maintenance'
 import { AlertWorkflow, FeedbackNote, WORKFLOW_TEXT, type WorkflowActions } from './components/AlertWorkflow'
 import StateBadge, { STATE_META, StateIcon } from './components/StateBadge'
@@ -38,7 +39,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const theme = useTheme()
   const [table, setTable] = useState(false)
   const [scrub, setScrub] = useState<number | null>(null)
-  const [view, setView] = useState<'dashboard' | 'model' | 'maintenance'>('dashboard')
+  const [view, setView] = useState<'dashboard' | 'model' | 'maintenance' | 'reports'>('dashboard')
   const [filter, setFilter] = useState<'all' | Workflow>('all')
   const shown = filter === 'all' ? alerts : alerts.filter((a) => a.workflow === filter)
 
@@ -69,6 +70,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         <nav className="views" aria-label="Pages">
           <button className={`tab${view === 'dashboard' ? ' on' : ''}`} aria-current={view === 'dashboard' ? 'page' : undefined} onClick={() => setView('dashboard')}>Dashboard</button>
           <button className={`tab${view === 'maintenance' ? ' on' : ''}`} aria-current={view === 'maintenance' ? 'page' : undefined} onClick={() => setView('maintenance')}>Maintenance{live.workOrders.some((w) => w.status !== 'done') ? ` (${live.workOrders.filter((w) => w.status !== 'done').length})` : ''}</button>
+          <button className={`tab${view === 'reports' ? ' on' : ''}`} aria-current={view === 'reports' ? 'page' : undefined} onClick={() => setView('reports')}>Reports</button>
           <button className={`tab${view === 'model' ? ' on' : ''}`} aria-current={view === 'model' ? 'page' : undefined} onClick={() => setView('model')}>Model</button>
         </nav>
         <span className="spacer" />
@@ -79,6 +81,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
       {live.error && <div className="banner" role="alert">{live.error}</div>}
 
       {view === 'model' ? <ModelPage meta={live.meta} me={me} alerts={alerts} onChanged={live.reloadModel} />
+        : view === 'reports' ? <ReportsPage me={me} replayT={reading.t} />
         : view === 'maintenance' ? <MaintenancePage orders={live.workOrders} alerts={alerts} actions={live} canAct={canAct} />
         : <>
       <section className="controls" aria-label="Replay controls">

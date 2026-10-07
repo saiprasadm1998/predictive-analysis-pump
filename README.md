@@ -18,6 +18,10 @@ Predictive-maintenance dashboard for oil & gas pumps. Learns what healthy operat
   what earlier work orders found), which turn into work orders with one click. A Maintenance tab logs work orders
   through open, in progress and done; closing one asks what was found and done. The dataset's sensors are anonymous,
   so to name real components copy `api/sensor-map.example.json` to `api/sensor-map.json` and edit it.
+- Reports and notifications: a shift report (time in each state, alerts, operator verdicts, work orders) that prints or
+  saves as a PDF from the browser, plus CSV downloads of alerts and work orders. Optional Slack messages when an alert
+  opens or becomes critical: set `SLACK_WEBHOOK_URL` in `api/.env` (see `.env.example`). Each alert is announced once,
+  messages are rate limited, and alerts while the pump restarts after a failure are skipped.
 
 Stack: React + TypeScript (web), Node + TypeScript (api), Python + scikit-learn + FastAPI (ml).
 
@@ -50,6 +54,6 @@ Detects 6 of 7 recorded failures 47-72h ahead (look-back capped at 72h); the 25 
 is missed. About 16 alerts open during healthy operation over four months.
 Threshold and training data come from the same period, so treat results as optimistic.
 
-Roles: `viewer` (read only), `operator` (replay control, alert status, verdicts, notes and work orders), `admin` (also apply a new alarm level, retrain, and manage users via `POST /api/users`).
+Roles: `viewer` (read only), `operator` (replay control, alert status, verdicts, notes and work orders), `admin` (also apply a new alarm level, retrain, send a test Slack message, and manage users via `POST /api/users`).
 
 Runs locally. Data is held in memory and resets when the API restarts.

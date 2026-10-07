@@ -152,3 +152,18 @@ export interface WorkOrder {
 export interface Suggestion { id: string; text: string; reason: string; title: string; priority: Priority }
 export interface NewWorkOrder { alertId?: string | null; title: string; description?: string; priority: Priority; assignee?: string | null }
 export interface WorkOrderPatch { status?: WorkStatus; assignee?: string | null; priority?: Priority; outcome?: string }
+
+export interface ShiftReport {
+  from: string
+  to: string
+  hours: number
+  generatedAt: string
+  health: { average: number | null; lowest: { value: number; t: string } | null; latest: number | null }
+  timeInState: { healthy: number; watch: number; warning: number; critical: number }
+  counts: { active: number; opened: number; closed: number; stillOpen: number; critical: number; realIssue: number; falseAlarm: number; awaitingReview: number }
+  alerts: Alert[]
+  workOrders: WorkOrder[]
+  openWorkOrders: number
+  narrative: string[]
+}
+export interface NotifyStatus { enabled: boolean; minSeverity: 'warning' | 'critical'; sent: number; dropped: number; lastError: string | null; lastSentAt: string | null }
