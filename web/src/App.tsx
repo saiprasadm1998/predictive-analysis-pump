@@ -3,6 +3,7 @@ import Login from './components/Login'
 import LineChart from './components/LineChart'
 import BarList from './components/BarList'
 import FailureCatalog, { MatchLine } from './components/FailureCatalog'
+import ModelPage from './components/ModelPage'
 import { AlertWorkflow, FeedbackNote, WORKFLOW_TEXT, type WorkflowActions } from './components/AlertWorkflow'
 import StateBadge, { STATE_META, StateIcon } from './components/StateBadge'
 import { clearToken, hasToken } from './lib/api'
@@ -36,6 +37,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const theme = useTheme()
   const [table, setTable] = useState(false)
   const [scrub, setScrub] = useState<number | null>(null)
+  const [view, setView] = useState<'dashboard' | 'model'>('dashboard')
   const [filter, setFilter] = useState<'all' | Workflow>('all')
   const shown = filter === 'all' ? alerts : alerts.filter((a) => a.workflow === filter)
 
@@ -63,6 +65,10 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         <h1>Pump Guardian</h1>
         <span className="asset">Pump P-101 · replaying recorded sensor history (51 sensors)</span>
         {me && <span className="pill">{me.username} · {me.role}</span>}
+        <nav className="views" aria-label="Pages">
+          <button className={`tab${view === 'dashboard' ? ' on' : ''}`} aria-current={view === 'dashboard' ? 'page' : undefined} onClick={() => setView('dashboard')}>Dashboard</button>
+          <button className={`tab${view === 'model' ? ' on' : ''}`} aria-current={view === 'model' ? 'page' : undefined} onClick={() => setView('model')}>Model</button>
+        </nav>
         <span className="spacer" />
         <button className="btn" onClick={theme.toggle} aria-label="Toggle dark mode">{theme.dark ? 'Light' : 'Dark'} mode</button>
         <button className="btn" onClick={() => { clearToken(); onSignOut() }}>Sign out</button>
@@ -70,6 +76,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
 
       {live.error && <div className="banner" role="alert">{live.error}</div>}
 
+      {view === 'model' ? <ModelPage meta={live.meta} me={me} alerts={alerts} onChanged={live.reloadModel} /> : <>
       <section className="controls" aria-label="Replay controls">
         <button className="btn primary" disabled={!canAct} onClick={replay.playing ? live.pause : live.play} style={{ minWidth: 80 }}>
           {replay.playing ? 'Pause' : 'Play'}
@@ -124,7 +131,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
             <div className="card tile">
               <div className="label">Failures caught early</div>
               <div className="value">{ev ? `${ev.failures_detected} of ${ev.failures_total}` : '—'}</div>
-              <div className="note">in recorded history, 47–72 h ahead</div>
+              <div className="note">{ev?.lead_min != null ? `in recorded history, ${Math.round(ev.lead_min)}–${Math.round(ev.lead_max!)} h ahead` : 'in recorded history'}</div>
             </div>
           </div>
         </div>
@@ -210,6 +217,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         Model: distance from normal operating behaviour across 51 sensors, trained on the healthy periods of this dataset.
         {ev && ` Over four months of healthy running it raised about ${ev.healthy_false_alarm_episodes} false alert episodes; results are measured on the same data it learned from, so treat them as optimistic.`}
       </p>
+      </>}
     </div>
   )
 }

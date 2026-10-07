@@ -1,6 +1,6 @@
 """FastAPI scoring service: serves health scores, readings, explanations and evaluation."""
 from __future__ import annotations
-import json, sys
+import json, sys, threading
 from pathlib import Path
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
@@ -9,27 +9,56 @@ sys.path.insert(0, str(Path(__file__).parent))
 from features import load, sensor_cols
 from model import PumpModel, ART
 from patterns import PatternLibrary
+from evaluation import CURVE_LEVELS, LOOKBACK_H, PERSIST_MIN, evaluate, runs
+from pydantic import BaseModel, Field
 from features import failure_times
 
 app = FastAPI(title="Pump Guardian ML service")
 STATE: dict = {}
 
 
+SETTINGS = ART / "settings.json"
+LEVEL_MIN, LEVEL_MAX = 0.3, 5.0
+LOCK = threading.Lock()
+
+
+def _saved_level() -> float:
+    try:
+        return float(json.loads(SETTINGS.read_text())["level"])
+    except Exception:
+        return 1.0
+
+
+def load_state(level: float | None = None) -> None:
+    """(Re)build everything the API serves from the saved model. The alarm level rescales the anomaly ratio, so
+    health, status, alerts and the chart's alarm line all follow it without any other code knowing."""
+    level = _saved_level() if level is None else level
+    df = STATE.get("df")
+    if df is None:   # the recorded history never changes, so read the 124 MB CSV once
+        df = load()
+    model = PumpModel.load()
+    raw = pd.read_parquet(ART / "scores.parquet")
+    ft = failure_times(df)
+    scores = raw.copy()
+    scores["raw_ratio"] = raw["ratio"]
+    scores["ratio"] = raw["ratio"] / level
+    scores["health"] = 100.0 / (1.0 + scores["ratio"] ** 2)
+    scores["run_above"], scores["run_below"] = runs(scores["raw_ratio"], level)
+    ev = evaluate(raw["ratio"], df, ft, level)
+    saved = json.loads((ART / "evaluation.json").read_text())
+    tops = {f["failure"]: f.get("top_sensors", []) for f in saved["failures"]}
+    for f in ev["failures"]:
+        f["top_sensors"] = tops.get(f["failure"], [])
+    ev.update(threshold=model.threshold, lookback_hours=LOOKBACK_H, persistence_minutes=PERSIST_MIN)
+    leads = {f["failure"]: f["lead_hours"] for f in ev["failures"]}
+    STATE.update(df=df, model=model, sensors=sensor_cols(df), scores=scores, raw_ratio=raw["ratio"], failures=ft,
+                 level=level, evaluation=ev, curve=None)
+    STATE["patterns"] = PatternLibrary(df, model, scores, ft, leads)
+
+
 @app.on_event("startup")
 def startup():
-    df = load()
-    model = PumpModel.load()
-    scores = pd.read_parquet(ART / "scores.parquet")
-    above = (scores["ratio"] > 1.0).astype(int)
-    below = (scores["ratio"] < 0.8).astype(int)
-    # consecutive minutes currently above / below threshold (persistence), used for alerting
-    scores["run_above"] = above.groupby((above == 0).cumsum()).cumsum()
-    scores["run_below"] = below.groupby((below == 0).cumsum()).cumsum()
-    STATE.update(df=df, model=model, sensors=sensor_cols(df),
-                 scores=scores,
-                 evaluation=json.loads((ART / "evaluation.json").read_text()))
-    leads = {f["failure"]: f["lead_hours"] for f in STATE["evaluation"]["failures"]}
-    STATE["patterns"] = PatternLibrary(df, model, scores, failure_times(df), leads)
+    load_state()
 
 
 def _ts(value: str) -> pd.Timestamp:
@@ -48,7 +77,7 @@ def health():
 def meta():
     df, m = STATE["df"], STATE["model"]
     return {"sensors": STATE["sensors"], "start": str(df.index[0]), "end": str(df.index[-1]),
-            "threshold": m.threshold, "evaluation": STATE["evaluation"]}
+            "threshold": m.threshold, "level": STATE["level"], "train": m.meta, "evaluation": STATE["evaluation"]}
 
 
 @app.get("/scores")
@@ -113,3 +142,56 @@ def alerts(min_gap_hours: int = 6):
 def failures():
     """Catalogue of recorded failures: fingerprints, lead times and how alike they are."""
     return STATE["patterns"].catalog()
+
+
+@app.get("/sensitivity/preview")
+def preview(level: float = Query(..., ge=LEVEL_MIN, le=LEVEL_MAX)):
+    """What the recorded history would have looked like at this alarm level (nothing is changed)."""
+    ev = evaluate(STATE["raw_ratio"], STATE["df"], STATE["failures"], level)
+    return {k: v for k, v in ev.items() if k != "failures"} | {
+        "failures": [{"failure": f["failure"], "lead_hours": f["lead_hours"]} for f in ev["failures"]]}
+
+
+@app.get("/sensitivity/curve")
+def curve():
+    """Missed failures and false alarms across a range of alarm levels, for choosing one."""
+    if STATE.get("curve") is None:
+        rows = []
+        for lv in CURVE_LEVELS:
+            ev = evaluate(STATE["raw_ratio"], STATE["df"], STATE["failures"], lv)
+            rows.append({"level": lv, "failures_detected": ev["failures_detected"], "failures_total": ev["failures_total"],
+                         "false_alarm_episodes": ev["healthy_false_alarm_episodes"]})
+        STATE["curve"] = rows
+    return STATE["curve"]
+
+
+class Sensitivity(BaseModel):
+    level: float = Field(ge=LEVEL_MIN, le=LEVEL_MAX)
+
+
+@app.post("/sensitivity")
+def apply_sensitivity(body: Sensitivity):
+    with LOCK:
+        SETTINGS.write_text(json.dumps({"level": body.level}))
+        load_state(body.level)
+    return meta()
+
+
+Window = tuple[str, str]
+
+
+class Retrain(BaseModel):
+    include: list[Window] = Field(default_factory=list, max_length=500)
+    exclude: list[Window] = Field(default_factory=list, max_length=500)
+
+
+@app.post("/retrain")
+def retrain(body: Retrain):
+    """Refit on the healthy data, adjusted by operator verdicts, then reload. Keeps the chosen alarm level."""
+    from train import train
+    before = STATE["evaluation"]
+    with LOCK:
+        train(body.include, body.exclude, quiet=True, df=STATE["df"])
+        load_state()
+    return {"before": {k: before[k] for k in ("threshold", "failures_detected", "failures_total", "healthy_false_alarm_episodes")},
+            "meta": meta()}

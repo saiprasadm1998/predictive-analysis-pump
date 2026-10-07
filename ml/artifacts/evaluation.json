@@ -1,11 +1,7 @@
 {
-  "threshold": 223.2215075368695,
-  "lookback_hours": 72,
-  "persistence_minutes": 30,
-  "failures_detected": 6,
+  "level": 1.0,
   "failures_total": 7,
-  "healthy_alarm_rate": 0.0119,
-  "healthy_false_alarm_episodes": 16,
+  "failures_detected": 6,
   "failures": [
     {
       "failure": "2018-04-12 21:55:00",
@@ -189,5 +185,12 @@
         }
       ]
     }
-  ]
+  ],
+  "healthy_false_alarm_episodes": 16,
+  "healthy_alarm_rate": 0.0119,
+  "lead_min": 46.8,
+  "lead_max": 72.0,
+  "threshold": 223.22150753683218,
+  "lookback_hours": 72,
+  "persistence_minutes": 30
 }

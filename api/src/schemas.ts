@@ -28,3 +28,6 @@ export const workflowBody = z.object({
 }).refine((b) => b.workflow !== undefined || b.label !== undefined, { message: "nothing to change" });
 
 export const commentBody = z.object({ text: z.string().trim().min(1).max(1000) });
+
+export const levelBody = z.object({ level: z.number().min(0.3).max(5) });
+export const previewQuery = z.object({ level: z.coerce.number().min(0.3).max(5) });

@@ -99,6 +99,16 @@ export function useLive(onAuthLost: () => void) {
     api.feedback().then(setFeedback).catch(() => { /* hint is optional */ })
   }, [labelSig, me])
 
+  /** After the model changes (new alarm level, retrain): refresh everything derived from it. */
+  const reloadModel = useCallback(async () => {
+    try {
+      const [m, cat, sc, s] = await Promise.all([api.meta(), api.failures(), api.scenarios(), api.state()])
+      setMeta(m); setCatalog(cat); setScenarios(sc); setReplay(s)
+      if (s.latest) setReading(s.latest)
+      await loadWindow(s.t)
+    } catch (e) { fail(e) }
+  }, [fail, loadWindow])
+
   const patch = useCallback(async (fn: () => Promise<Alert>) => {
     try { const a = await fn(); setAlerts((p) => p.map((x) => (x.id === a.id ? a : x))) } catch (e) { fail(e) }
   }, [fail])
@@ -112,6 +122,7 @@ export function useLive(onAuthLost: () => void) {
 
   return {
     me, catalog, feedback, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
+    reloadModel,
     play: () => act(api.play), pause: () => act(api.pause),
     setSpeed: (n: number) => act(() => api.speed(n)),
     seek: (t: string) => act(() => api.seek(t), true),

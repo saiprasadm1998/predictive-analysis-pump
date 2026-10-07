@@ -145,3 +145,22 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tab.on { background: var(--ghost); color: var(--ink); font-weight: 600; }
 .feedback { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; max-width: 80ch; }
 .feedback p { margin: 4px 0 0; color: var(--ink-2); }
+
+.views { display: flex; gap: 6px; margin-left: 8px; }
+.model { display: grid; gap: 16px; margin-top: 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.stats .label, .tradeoff .note { color: var(--muted); font-size: 12px; }
+.stats .big { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.stats .note { color: var(--muted); font-size: 12px; }
+.slider-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.slider-row input[type=range] { flex: 1 1 240px; min-width: 160px; accent-color: var(--series-1); }
+.slider-row output { min-width: 4ch; font-size: 16px; }
+.preview { margin-top: 14px; }
+.tradeoff { display: flex; gap: 32px; flex-wrap: wrap; }
+.tradeoff .big { font-size: 22px; font-weight: 700; }
+.missed { color: var(--ink-2); margin: 8px 0; }
+.miss { color: var(--c-critical, #c0392b); font-weight: 600; }
+.subhead { font-size: 13px; margin: 18px 0 6px; color: var(--ink-2); }
+tr.now td { background: var(--ghost); }
+.confirm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.result { margin: 10px 0 0; color: var(--ink-2); }

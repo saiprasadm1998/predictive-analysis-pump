@@ -39,6 +39,11 @@ export interface ModelRun {
   failuresTotal: number;
   healthyAlarmRate: number;
   healthyFalseAlarmEpisodes: number;
+  trigger: "startup" | "sensitivity" | "retrain";
+  level: number;               // alarm level in force, as a multiple of the model's threshold
+  by?: string;
+  windowsIncluded?: number;    // retrain: false-alarm windows added to the healthy data
+  windowsExcluded?: number;    // retrain: real-issue windows removed from it
 }
 
 export type Workflow = "new" | "investigating" | "resolved";

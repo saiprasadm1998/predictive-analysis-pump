@@ -9,8 +9,9 @@ import { clearFailures, hashPassword, login, recordFailure, requireAuth, require
 import { ml } from "./ml.js";
 import { Replay } from "./replay.js";
 import { createStore, DuplicateError } from "./store/index.js";
-import { commentBody, createUserBody, loginBody, readingsQuery, replayBody, scoresQuery, workflowBody } from "./schemas.js";
+import { commentBody, createUserBody, loginBody, levelBody, previewQuery, readingsQuery, replayBody, scoresQuery, workflowBody } from "./schemas.js";
 import { feedback } from "./feedback.js";
+import { runFrom, verdictWindows } from "./modelRuns.js";
 import type { Alert } from "./types.js";
 
 const store = createStore();
@@ -91,6 +92,26 @@ app.post("/api/alerts/:id/comments", requireRole("operator"), wrap(async (req, r
 }));
 app.get("/api/feedback", wrap(async (_req, res) => res.json(feedback(await store.alerts.list(replay.state().t)))));
 
+app.get("/api/model/preview", wrap(async (req, res) => {
+  const q = previewQuery.safeParse(req.query);
+  if (!q.success) return res.status(400).json({ error: "level must be between 0.3 and 5" });
+  res.json(await ml.preview(q.data.level));
+}));
+app.get("/api/model/curve", wrap(async (_req, res) => res.json(await ml.curve())));
+app.post("/api/model/sensitivity", requireRole("admin"), wrap(async (req, res) => {
+  const b = levelBody.safeParse(req.body);
+  if (!b.success) return res.status(400).json({ error: "level must be between 0.3 and 5" });
+  const meta = await ml.setLevel(b.data.level);
+  await store.modelRuns.record(runFrom(meta, "sensitivity", { by: req.session!.sub }));
+  res.json(meta);
+}));
+app.post("/api/model/retrain", requireRole("admin"), wrap(async (req, res) => {
+  const { include, exclude } = verdictWindows(await store.alerts.list());
+  const out = await ml.retrain(include, exclude);
+  await store.modelRuns.record(runFrom(out.meta, "retrain", { by: req.session!.sub, windowsIncluded: include.length, windowsExcluded: exclude.length }));
+  res.json(out);
+}));
+
 app.get("/api/model-runs", wrap(async (_req, res) => res.json(await store.modelRuns.list())));
 
 app.get("/api/users", requireRole("admin"), wrap(async (_req, res) => res.json(await store.users.list())));
@@ -144,13 +165,7 @@ async function main() {
   await store.init();
   await seedAdmin(store);
   await replay.init();
-  const meta = await ml.meta();
-  const ev = meta.evaluation;
-  await store.modelRuns.record({
-    id: `thr-${meta.threshold.toFixed(3)}-d${ev.failures_detected}-e${ev.healthy_false_alarm_episodes}`, recordedAt: new Date().toISOString(), threshold: meta.threshold,
-    failuresDetected: ev.failures_detected, failuresTotal: ev.failures_total,
-    healthyAlarmRate: ev.healthy_alarm_rate, healthyFalseAlarmEpisodes: ev.healthy_false_alarm_episodes,
-  });
+  await store.modelRuns.record(runFrom(await ml.meta(), "startup"));
   server.listen(config.port, () => console.log(`API on :${config.port} (store: ${store.kind})`));
 }
 main().catch((e: Error) => { console.error("startup failed:", e.message); process.exit(1); });

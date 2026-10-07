@@ -89,14 +89,46 @@ export interface Meta {
   start: string
   end: string
   threshold: number
+  level: number
+  train: { train_rows: number; trained_from: string; trained_to: string; windows_included: number; windows_excluded: number }
   evaluation: {
     failures_detected: number
     failures_total: number
     healthy_alarm_rate: number
     healthy_false_alarm_episodes: number
+    lead_min: number | null
+    lead_max: number | null
     failures: { failure: string; lead_hours: number | null }[]
   }
 }
 
 export interface ScorePoint { t: string; health: number; ratio: number; status: string }
 export interface Series { t: string[]; [sensor: string]: (string | number)[] }
+
+export interface Preview {
+  level: number
+  failures_total: number
+  failures_detected: number
+  healthy_false_alarm_episodes: number
+  lead_min: number | null
+  lead_max: number | null
+  failures: { failure: string; lead_hours: number | null }[]
+}
+export interface CurveRow { level: number; failures_detected: number; failures_total: number; false_alarm_episodes: number }
+export interface ModelRun {
+  id: string
+  recordedAt: string
+  threshold: number
+  level: number
+  trigger: 'startup' | 'sensitivity' | 'retrain'
+  failuresDetected: number
+  failuresTotal: number
+  healthyFalseAlarmEpisodes: number
+  by?: string
+  windowsIncluded?: number
+  windowsExcluded?: number
+}
+export interface RetrainResult {
+  before: { threshold: number; failures_detected: number; failures_total: number; healthy_false_alarm_episodes: number }
+  meta: Meta
+}

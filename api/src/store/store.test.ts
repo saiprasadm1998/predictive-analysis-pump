@@ -69,7 +69,7 @@ describe.each(targets)("store contract: %s", (_name, make) => {
   });
 
   it("records each model run once", async () => {
-    const run = { id: "thr-1", recordedAt: "2026-10-07T00:00:00Z", threshold: 223, failuresDetected: 6, failuresTotal: 7, healthyAlarmRate: 0.01, healthyFalseAlarmEpisodes: 13 };
+    const run = { id: "thr-1", recordedAt: "2026-10-07T00:00:00Z", threshold: 223, failuresDetected: 6, failuresTotal: 7, healthyAlarmRate: 0.01, healthyFalseAlarmEpisodes: 13, trigger: "startup" as const, level: 1 };
     await store.modelRuns.record(run);
     await store.modelRuns.record({ ...run, recordedAt: "2026-10-08T00:00:00Z" });
     expect(await store.modelRuns.list()).toHaveLength(1);

@@ -1,4 +1,4 @@
-import type { Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
+import type { CurveRow, ModelRun, Preview, RetrainResult, Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
 
 let token: string | null = null
 try { token = localStorage.getItem('pg_token') } catch { /* storage unavailable */ }
@@ -40,6 +40,11 @@ export const api = {
   meta: () => call<Meta>('/api/meta'),
   scenarios: () => call<Scenario[]>('/api/scenarios'),
   alerts: () => call<Alert[]>('/api/alerts'),
+  preview: (level: number) => call<Preview>(`/api/model/preview?level=${level}`),
+  curve: () => call<CurveRow[]>('/api/model/curve'),
+  runs: () => call<ModelRun[]>('/api/model-runs'),
+  setLevel: (level: number) => call<Meta>('/api/model/sensitivity', { method: 'POST', body: JSON.stringify({ level }) }),
+  retrain: () => call<RetrainResult>('/api/model/retrain', { method: 'POST', body: '{}' }),
   feedback: () => call<Feedback>('/api/feedback'),
   workflow: (id: string, body: { workflow?: Workflow; label?: Label | null }) =>
     call<Alert>(`/api/alerts/${id}/workflow`, { method: 'POST', body: JSON.stringify(body) }),
