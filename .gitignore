@@ -8,3 +8,4 @@ ml/data/*.csv
 ml/artifacts/*.joblib
 .DS_Store
 ml/artifacts/settings.json
+_to_delete/
