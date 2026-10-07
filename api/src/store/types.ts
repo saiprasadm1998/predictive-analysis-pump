@@ -1,7 +1,7 @@
 import type { Alert, Comment, Label, ModelRun, Role, User, Workflow } from "../types.js";
 
 export interface Store {
-  readonly kind: "mongo" | "memory";
+  readonly kind: "memory";
   init(): Promise<void>;
   close(): Promise<void>;
   users: {

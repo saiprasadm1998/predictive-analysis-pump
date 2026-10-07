@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { memoryStore } from "./memory.js";
-import { mongoStore } from "./mongo.js";
 import { DuplicateError, type Store } from "./types.js";
 import type { Alert } from "../types.js";
 
@@ -10,11 +9,8 @@ const alert = (start: string, over: Partial<Alert> = {}): Alert => ({
   recovery: false, workflow: "new", label: null, comments: [], ...over,
 });
 
-// The same contract runs against memory always, and against MongoDB/Atlas when TEST_MONGODB_URI is set.
+// Any store implementation must satisfy this contract.
 const targets: [string, () => Store][] = [["memory", memoryStore]];
-if (process.env.TEST_MONGODB_URI) {
-  targets.push(["mongo", () => mongoStore(process.env.TEST_MONGODB_URI!, `pg_test_${Date.now()}`)]);
-}
 
 describe.each(targets)("store contract: %s", (_name, make) => {
   const store = make();

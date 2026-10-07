@@ -1,7 +1,7 @@
 import { DuplicateError, type Store } from "./types.js";
 import type { Alert, Comment, Label, ModelRun, User, Workflow } from "../types.js";
 
-/** In-memory store: used when MONGODB_URI is not set, and in tests. */
+/** In-memory store: the store the API runs on, and the one the tests use. */
 export function memoryStore(): Store {
   const users = new Map<string, User>();
   const alerts = new Map<string, Alert>();

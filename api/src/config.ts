@@ -9,9 +9,6 @@ export const config = {
   mlUrl: process.env.ML_URL ?? "http://127.0.0.1:8000",
   jwtSecret: secret,
   tickMs: Number(process.env.TICK_MS ?? 1000),
-  /** MongoDB / Atlas connection string. Unset = in-memory store (data lost on restart). */
-  mongoUri: process.env.MONGODB_URI ?? "",
-  mongoDb: process.env.MONGODB_DB ?? "pump_guardian",
   /** First-run admin account, created only when the users collection is empty. */
   adminUser: process.env.ADMIN_USER ?? process.env.DEMO_USER ?? "operator",
   adminPass: process.env.ADMIN_PASS ?? process.env.DEMO_PASS ?? "pumps123",
