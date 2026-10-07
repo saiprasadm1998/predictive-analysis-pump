@@ -9,12 +9,14 @@ import { clearFailures, hashPassword, login, recordFailure, requireAuth, require
 import { ml } from "./ml.js";
 import { Replay } from "./replay.js";
 import { createStore, DuplicateError } from "./store/index.js";
-import { commentBody, createUserBody, loginBody, levelBody, previewQuery, readingsQuery, replayBody, scoresQuery, workflowBody } from "./schemas.js";
+import { commentBody, createUserBody, createWorkOrderBody, updateWorkOrderBody, workOrdersQuery, loginBody, levelBody, previewQuery, readingsQuery, replayBody, scoresQuery, workflowBody } from "./schemas.js";
 import { feedback } from "./feedback.js";
 import { runFrom, verdictWindows } from "./modelRuns.js";
+import { loadSensorMap, suggest, type PastWork } from "./suggestions.js";
 import type { Alert } from "./types.js";
 
 const store = createStore();
+const sensorMap = loadSensorMap(config.sensorMapPath);
 const replay = new Replay();
 const app = express();
 app.use(cors());
@@ -91,6 +93,43 @@ app.post("/api/alerts/:id/comments", requireRole("operator"), wrap(async (req, r
   a ? (send("alert", a), res.json(a)) : res.status(404).json({ error: "not found" });
 }));
 app.get("/api/feedback", wrap(async (_req, res) => res.json(feedback(await store.alerts.list(replay.state().t)))));
+
+app.get("/api/alerts/:id/suggestions", wrap(async (req, res) => {
+  const alert = await store.alerts.get(String(req.params.id));
+  if (!alert) return res.status(404).json({ error: "not found" });
+  const done = (await store.workOrders.list({ status: "done" })).filter((w) => w.alertId);
+  const past: PastWork[] = [];
+  for (const order of done) {
+    const a = await store.alerts.get(order.alertId!);
+    if (a) past.push({ order, alert: a });
+  }
+  res.json(suggest(alert, past, sensorMap));
+}));
+
+app.get("/api/work-orders", wrap(async (req, res) => {
+  const q = workOrdersQuery.safeParse(req.query);
+  if (!q.success) return res.status(400).json({ error: "invalid filter" });
+  res.json(await store.workOrders.list(q.data));
+}));
+app.post("/api/work-orders", requireRole("operator"), wrap(async (req, res) => {
+  const b = createWorkOrderBody.safeParse(req.body);
+  if (!b.success) return res.status(400).json({ error: b.error.issues[0]?.message ?? "invalid work order" });
+  const alertId = b.data.alertId ?? null;
+  if (alertId && !(await store.alerts.get(alertId))) return res.status(400).json({ error: "that alert does not exist" });
+  res.status(201).json(await store.workOrders.create({ alertId, title: b.data.title, description: b.data.description,
+    priority: b.data.priority, assignee: b.data.assignee ?? null }, req.session!.sub));
+}));
+app.patch("/api/work-orders/:id", requireRole("operator"), wrap(async (req, res) => {
+  const b = updateWorkOrderBody.safeParse(req.body);
+  if (!b.success) return res.status(400).json({ error: b.error.issues[0]?.message ?? "invalid change" });
+  const id = String(req.params.id);
+  const cur = await store.workOrders.get(id);
+  if (!cur) return res.status(404).json({ error: "not found" });
+  if (b.data.status === "done" && !(b.data.outcome ?? cur.outcome)) {
+    return res.status(400).json({ error: "say what was found and done before closing a work order" });
+  }
+  res.json(await store.workOrders.update(id, b.data));
+}));
 
 app.get("/api/model/preview", wrap(async (req, res) => {
   const q = previewQuery.safeParse(req.query);

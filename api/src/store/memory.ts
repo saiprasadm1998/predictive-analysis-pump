@@ -1,11 +1,13 @@
 import { DuplicateError, type Store } from "./types.js";
-import type { Alert, Comment, Label, ModelRun, User, Workflow } from "../types.js";
+import type { Alert, ModelRun, User, WorkOrder } from "../types.js";
 
 /** In-memory store: the store the API runs on, and the one the tests use. */
 export function memoryStore(): Store {
   const users = new Map<string, User>();
   const alerts = new Map<string, Alert>();
   const runs = new Map<string, ModelRun>();
+  const orders = new Map<string, WorkOrder>();
+  let seq = 0;
   return {
     kind: "memory",
     async init() {},
@@ -59,6 +61,35 @@ export function memoryStore(): Store {
         if (!a) return null;
         const next: Alert = { ...a, comments: [...a.comments, c] };
         alerts.set(id, next);
+        return next;
+      },
+    },
+    workOrders: {
+      async create(input, by) {
+        const now = new Date().toISOString();
+        const wo: WorkOrder = { id: `WO-${String(++seq).padStart(4, "0")}`, ...input, status: "open", createdBy: by, createdAt: now, updatedAt: now };
+        orders.set(wo.id, wo);
+        return wo;
+      },
+      async get(id) { return orders.get(id) ?? null; },
+      async list(filter) {
+        return [...orders.values()]
+          .filter((w) => (!filter?.alertId || w.alertId === filter.alertId) && (!filter?.status || w.status === filter.status))
+          .sort((a, b) => (a.createdAt === b.createdAt ? (a.id < b.id ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1));
+      },
+      async update(id, patch) {
+        const w = orders.get(id);
+        if (!w) return null;
+        const now = new Date().toISOString();
+        const next: WorkOrder = { ...w, updatedAt: now };
+        if (patch.status) {
+          next.status = patch.status;
+          if (patch.status === "done") next.completedAt = now; else delete next.completedAt;
+        }
+        if (patch.assignee !== undefined) next.assignee = patch.assignee;
+        if (patch.priority) next.priority = patch.priority;
+        if (patch.outcome !== undefined) next.outcome = patch.outcome;
+        orders.set(id, next);
         return next;
       },
     },

@@ -9,6 +9,8 @@ export const config = {
   mlUrl: process.env.ML_URL ?? "http://127.0.0.1:8000",
   jwtSecret: secret,
   tickMs: Number(process.env.TICK_MS ?? 1000),
+  /** Optional JSON file mapping sensor ids to plant components, e.g. {"sensor_04": "Drive-end bearing"}. */
+  sensorMapPath: process.env.SENSOR_MAP ?? "sensor-map.json",
   /** First-run admin account, created only when the users collection is empty. */
   adminUser: process.env.ADMIN_USER ?? process.env.DEMO_USER ?? "operator",
   adminPass: process.env.ADMIN_PASS ?? process.env.DEMO_PASS ?? "pumps123",

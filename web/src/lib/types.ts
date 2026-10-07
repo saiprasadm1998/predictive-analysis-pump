@@ -132,3 +132,23 @@ export interface RetrainResult {
   before: { threshold: number; failures_detected: number; failures_total: number; healthy_false_alarm_episodes: number }
   meta: Meta
 }
+
+export type Priority = 'low' | 'medium' | 'high'
+export type WorkStatus = 'open' | 'in_progress' | 'done'
+export interface WorkOrder {
+  id: string
+  alertId: string | null
+  title: string
+  description: string
+  priority: Priority
+  status: WorkStatus
+  assignee: string | null
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  outcome?: string
+}
+export interface Suggestion { id: string; text: string; reason: string; title: string; priority: Priority }
+export interface NewWorkOrder { alertId?: string | null; title: string; description?: string; priority: Priority; assignee?: string | null }
+export interface WorkOrderPatch { status?: WorkStatus; assignee?: string | null; priority?: Priority; outcome?: string }

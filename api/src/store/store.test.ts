@@ -68,6 +68,24 @@ describe.each(targets)("store contract: %s", (_name, make) => {
     expect(await store.alerts.addComment("nope", { id: "x", by: "s", at: "t", text: "t" })).toBeNull();
   });
 
+  it("numbers work orders, filters them, and stamps completion", async () => {
+    const a = await store.workOrders.create({ alertId: "a1", title: "Inspect seal", description: "", priority: "high", assignee: null }, "sai");
+    const b = await store.workOrders.create({ alertId: null, title: "Check gauge", description: "d", priority: "low", assignee: "ravi" }, "sai");
+    expect([a.id, b.id]).toEqual(["WO-0001", "WO-0002"]);
+    expect(a).toMatchObject({ status: "open", createdBy: "sai" });
+    expect((await store.workOrders.list()).map((w) => w.id)).toEqual(["WO-0002", "WO-0001"]);
+    expect((await store.workOrders.list({ alertId: "a1" })).map((w) => w.id)).toEqual(["WO-0001"]);
+    const done = await store.workOrders.update("WO-0001", { status: "done", outcome: "Seal replaced" });
+    expect(done).toMatchObject({ status: "done", outcome: "Seal replaced" });
+    expect(done?.completedAt).toBeTruthy();
+    expect((await store.workOrders.list({ status: "done" })).map((w) => w.id)).toEqual(["WO-0001"]);
+    const reopened = await store.workOrders.update("WO-0001", { status: "in_progress", assignee: null });
+    expect(reopened?.completedAt).toBeUndefined();
+    expect(reopened?.assignee).toBeNull();
+    expect(await store.workOrders.update("WO-9999", { status: "done" })).toBeNull();
+    expect(await store.workOrders.get("WO-9999")).toBeNull();
+  });
+
   it("records each model run once", async () => {
     const run = { id: "thr-1", recordedAt: "2026-10-07T00:00:00Z", threshold: 223, failuresDetected: 6, failuresTotal: 7, healthyAlarmRate: 0.01, healthyFalseAlarmEpisodes: 13, trigger: "startup" as const, level: 1 };
     await store.modelRuns.record(run);

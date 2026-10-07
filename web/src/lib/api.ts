@@ -1,4 +1,4 @@
-import type { CurveRow, ModelRun, Preview, RetrainResult, Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
+import type { CurveRow, NewWorkOrder, Suggestion, WorkOrder, WorkOrderPatch, ModelRun, Preview, RetrainResult, Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
 
 let token: string | null = null
 try { token = localStorage.getItem('pg_token') } catch { /* storage unavailable */ }
@@ -45,6 +45,10 @@ export const api = {
   runs: () => call<ModelRun[]>('/api/model-runs'),
   setLevel: (level: number) => call<Meta>('/api/model/sensitivity', { method: 'POST', body: JSON.stringify({ level }) }),
   retrain: () => call<RetrainResult>('/api/model/retrain', { method: 'POST', body: '{}' }),
+  suggestions: (alertId: string) => call<Suggestion[]>(`/api/alerts/${alertId}/suggestions`),
+  workOrders: () => call<WorkOrder[]>('/api/work-orders'),
+  createWorkOrder: (b: NewWorkOrder) => call<WorkOrder>('/api/work-orders', { method: 'POST', body: JSON.stringify(b) }),
+  updateWorkOrder: (id: string, b: WorkOrderPatch) => call<WorkOrder>(`/api/work-orders/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
   feedback: () => call<Feedback>('/api/feedback'),
   workflow: (id: string, body: { workflow?: Workflow; label?: Label | null }) =>
     call<Alert>(`/api/alerts/${id}/workflow`, { method: 'POST', body: JSON.stringify(body) }),

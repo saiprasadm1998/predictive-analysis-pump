@@ -36,7 +36,8 @@ button, select, input { font: inherit; color: inherit; }
 
 header.top { display: flex; align-items: center; gap: 16px; padding: 16px 0; flex-wrap: wrap; }
 header.top h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
-.asset { color: var(--ink-2); font-size: 13px; }
+.asset { color: var(--ink-2); font-size: 13px; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1400px) { .asset { display: none; } }
 .spacer { flex: 1; }
 .btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 .btn:hover { background: var(--ghost); }
@@ -147,7 +148,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .feedback p { margin: 4px 0 0; color: var(--ink-2); }
 
 .views { display: flex; gap: 6px; margin-left: 8px; }
-.model { display: grid; gap: 16px; margin-top: 16px; }
+.model { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
 .stats .label, .tradeoff .note { color: var(--muted); font-size: 12px; }
 .stats .big { font-size: 28px; font-weight: 700; line-height: 1.2; }
@@ -164,3 +165,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 tr.now td { background: var(--ghost); }
 .confirm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .result { margin: 10px 0 0; color: var(--ink-2); }
+
+.actions { margin-top: 8px; }
+.suggest { margin-top: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; max-width: 70ch; }
+.suggest ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.suggest li { display: grid; gap: 3px; justify-items: start; }
+.suggest p { margin: 8px 0 0; }
+.prio-high { color: var(--ink); font-weight: 700; border-color: var(--ink); }
+.prio-low { color: var(--muted); }
+.wo-desc { white-space: pre-line; max-width: 60ch; }
+.outcome { margin-top: 6px; font-size: 13px; max-width: 60ch; }
+.close { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.close input { flex: 1 1 180px; min-width: 0; padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.wo-form { display: grid; gap: 12px; max-width: 640px; }
+.wo-form label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.wo-form input, .wo-form textarea, .wo-form select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.wo-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+.wo-row label { flex: 1 1 140px; }

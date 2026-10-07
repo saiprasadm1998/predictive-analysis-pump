@@ -31,3 +31,22 @@ export const commentBody = z.object({ text: z.string().trim().min(1).max(1000) }
 
 export const levelBody = z.object({ level: z.number().min(0.3).max(5) });
 export const previewQuery = z.object({ level: z.coerce.number().min(0.3).max(5) });
+
+const priority = z.enum(["low", "medium", "high"]);
+export const createWorkOrderBody = z.object({
+  alertId: z.string().max(40).nullable().optional(),
+  title: z.string().trim().min(3).max(120),
+  description: z.string().trim().max(1000).default(""),
+  priority: priority.default("medium"),
+  assignee: z.string().trim().min(1).max(64).nullable().optional(),
+});
+export const updateWorkOrderBody = z.object({
+  status: z.enum(["open", "in_progress", "done"]).optional(),
+  assignee: z.string().trim().min(1).max(64).nullable().optional(),
+  priority: priority.optional(),
+  outcome: z.string().trim().min(3).max(1000).optional(),
+}).refine((b) => Object.keys(b).length > 0, { message: "nothing to change" });
+export const workOrdersQuery = z.object({
+  alertId: z.string().max(40).optional(),
+  status: z.enum(["open", "in_progress", "done"]).optional(),
+});

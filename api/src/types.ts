@@ -71,3 +71,30 @@ export interface Alert {
   labelledBy?: string;
   comments: Comment[];
 }
+
+export type Priority = "low" | "medium" | "high";
+export type WorkStatus = "open" | "in_progress" | "done";
+
+export interface WorkOrder {
+  id: string;               // WO-0001, WO-0002, ...
+  alertId: string | null;   // the alert it came from, if any
+  title: string;
+  description: string;
+  priority: Priority;
+  status: WorkStatus;
+  assignee: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  outcome?: string;         // what was found and done; required to close, and reused as history in suggestions
+}
+
+export interface Suggestion {
+  id: string;
+  text: string;
+  reason: string;
+  /** Pre-filled work order title when the operator turns this suggestion into one. */
+  title: string;
+  priority: Priority;
+}

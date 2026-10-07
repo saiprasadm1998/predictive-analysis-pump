@@ -1,4 +1,4 @@
-import type { Alert, Comment, Label, ModelRun, Role, User, Workflow } from "../types.js";
+import type { Alert, Comment, Label, ModelRun, Priority, Role, User, WorkOrder, WorkStatus, Workflow } from "../types.js";
 
 export interface Store {
   readonly kind: "memory";
@@ -20,6 +20,13 @@ export interface Store {
     /** Operator changes: status and/or verdict. Null label clears it. */
     setWorkflow(id: string, patch: { workflow?: Workflow; label?: Label | null }, by: string): Promise<Alert | null>;
     addComment(id: string, c: Comment): Promise<Alert | null>;
+  };
+  workOrders: {
+    create(input: { alertId: string | null; title: string; description: string; priority: Priority; assignee: string | null }, by: string): Promise<WorkOrder>;
+    get(id: string): Promise<WorkOrder | null>;
+    /** Newest first. */
+    list(filter?: { alertId?: string; status?: WorkStatus }): Promise<WorkOrder[]>;
+    update(id: string, patch: { status?: WorkStatus; assignee?: string | null; priority?: Priority; outcome?: string }): Promise<WorkOrder | null>;
   };
   modelRuns: {
     record(r: ModelRun): Promise<void>;

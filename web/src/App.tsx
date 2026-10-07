@@ -4,12 +4,13 @@ import LineChart from './components/LineChart'
 import BarList from './components/BarList'
 import FailureCatalog, { MatchLine } from './components/FailureCatalog'
 import ModelPage from './components/ModelPage'
+import MaintenancePage, { AlertActions, type WorkActions } from './components/Maintenance'
 import { AlertWorkflow, FeedbackNote, WORKFLOW_TEXT, type WorkflowActions } from './components/AlertWorkflow'
 import StateBadge, { STATE_META, StateIcon } from './components/StateBadge'
 import { clearToken, hasToken } from './lib/api'
 import { useLive } from './lib/useLive'
 import { parseT, shortDateTime, sensorName } from './lib/time'
-import type { Alert, Workflow } from './lib/types'
+import type { Alert, WorkOrder, Workflow } from './lib/types'
 
 const SPEEDS = [10, 30, 60, 120, 360]
 
@@ -37,7 +38,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const theme = useTheme()
   const [table, setTable] = useState(false)
   const [scrub, setScrub] = useState<number | null>(null)
-  const [view, setView] = useState<'dashboard' | 'model'>('dashboard')
+  const [view, setView] = useState<'dashboard' | 'model' | 'maintenance'>('dashboard')
   const [filter, setFilter] = useState<'all' | Workflow>('all')
   const shown = filter === 'all' ? alerts : alerts.filter((a) => a.workflow === filter)
 
@@ -67,6 +68,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         {me && <span className="pill">{me.username} · {me.role}</span>}
         <nav className="views" aria-label="Pages">
           <button className={`tab${view === 'dashboard' ? ' on' : ''}`} aria-current={view === 'dashboard' ? 'page' : undefined} onClick={() => setView('dashboard')}>Dashboard</button>
+          <button className={`tab${view === 'maintenance' ? ' on' : ''}`} aria-current={view === 'maintenance' ? 'page' : undefined} onClick={() => setView('maintenance')}>Maintenance{live.workOrders.some((w) => w.status !== 'done') ? ` (${live.workOrders.filter((w) => w.status !== 'done').length})` : ''}</button>
           <button className={`tab${view === 'model' ? ' on' : ''}`} aria-current={view === 'model' ? 'page' : undefined} onClick={() => setView('model')}>Model</button>
         </nav>
         <span className="spacer" />
@@ -76,7 +78,9 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
 
       {live.error && <div className="banner" role="alert">{live.error}</div>}
 
-      {view === 'model' ? <ModelPage meta={live.meta} me={me} alerts={alerts} onChanged={live.reloadModel} /> : <>
+      {view === 'model' ? <ModelPage meta={live.meta} me={me} alerts={alerts} onChanged={live.reloadModel} />
+        : view === 'maintenance' ? <MaintenancePage orders={live.workOrders} alerts={alerts} actions={live} canAct={canAct} />
+        : <>
       <section className="controls" aria-label="Replay controls">
         <button className="btn primary" disabled={!canAct} onClick={replay.playing ? live.pause : live.play} style={{ minWidth: 80 }}>
           {replay.playing ? 'Pause' : 'Play'}
@@ -206,7 +210,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         {alerts.length === 0 ? <div className="empty">No alerts yet. Press Play, or jump to a failure run-up.</div> : (
           <div className="table-wrap"><table>
             <thead><tr><th>Alert</th><th>Opened</th><th className="num">Peak</th><th>Outcome</th><th>Status and verdict</th></tr></thead>
-            <tbody>{shown.map((a) => <AlertRow key={a.id} a={a} actions={live} canAct={canAct} thresholds={catalog?.thresholds} />)}</tbody>
+            <tbody>{shown.map((a) => <AlertRow key={a.id} a={a} actions={live} orders={live.workOrders} canAct={canAct} thresholds={catalog?.thresholds} />)}</tbody>
           </table></div>
         )}
       </section>
@@ -222,7 +226,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   )
 }
 
-function AlertRow({ a, actions, canAct, thresholds }: { a: Alert; actions: WorkflowActions; canAct: boolean; thresholds?: { possible: number; strong: number } }) {
+function AlertRow({ a, actions, orders, canAct, thresholds }: { a: Alert; actions: WorkflowActions & WorkActions; orders: WorkOrder[]; canAct: boolean; thresholds?: { possible: number; strong: number } }) {
   const st = a.severity === 'critical' ? 'critical' : 'warning'
   return (
     <tr>
@@ -230,6 +234,7 @@ function AlertRow({ a, actions, canAct, thresholds }: { a: Alert; actions: Workf
         <span className="sev"><StateIcon state={st} />{a.severity === 'critical' ? 'Critical' : 'Warning'}</span>
         <div className="summary">{a.summary}</div>
         <MatchLine match={a.match} thresholds={thresholds} />
+        <AlertActions a={a} orders={orders} actions={actions} canAct={canAct} />
       </td>
       <td>{shortDateTime(parseT(a.start))}<div className="hint">{a.status === 'open' ? 'ongoing' : `closed ${shortDateTime(parseT(a.end!))}`}</div></td>
       <td className="num">{a.peakRatio.toFixed(1)}×</td>

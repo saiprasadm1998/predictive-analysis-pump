@@ -14,6 +14,10 @@ Predictive-maintenance dashboard for oil & gas pumps. Learns what healthy operat
   silenced the false alarms without losing the real issues. It is a suggestion to test, not applied automatically.
 - Model page: replay the recorded history at a different alarm level to see which failures would be missed and how many
   false alerts you would get, apply the level (admins), retrain using operator verdicts, and see a history of model runs.
+- Maintenance: each alert offers suggested checks (from its severity, closest recorded failure, driving sensors and
+  what earlier work orders found), which turn into work orders with one click. A Maintenance tab logs work orders
+  through open, in progress and done; closing one asks what was found and done. The dataset's sensors are anonymous,
+  so to name real components copy `api/sensor-map.example.json` to `api/sensor-map.json` and edit it.
 
 Stack: React + TypeScript (web), Node + TypeScript (api), Python + scikit-learn + FastAPI (ml).
 
@@ -46,6 +50,6 @@ Detects 6 of 7 recorded failures 47-72h ahead (look-back capped at 72h); the 25 
 is missed. About 16 alerts open during healthy operation over four months.
 Threshold and training data come from the same period, so treat results as optimistic.
 
-Roles: `viewer` (read only), `operator` (replay control, alert status, verdicts and notes), `admin` (also apply a new alarm level, retrain, and manage users via `POST /api/users`).
+Roles: `viewer` (read only), `operator` (replay control, alert status, verdicts, notes and work orders), `admin` (also apply a new alarm level, retrain, and manage users via `POST /api/users`).
 
 Runs locally. Data is held in memory and resets when the API restarts.

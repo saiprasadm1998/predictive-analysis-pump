@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, connectLive } from './api'
-import type { Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, Series } from './types'
+import type { NewWorkOrder, WorkOrder, WorkOrderPatch, Alert, FailureCatalog, Feedback, Label, Workflow, Me, Meta, Reading, ReplayState, Scenario, Series } from './types'
 import { HOUR, fmtT, parseT } from './time'
 import type { Pt } from '../components/LineChart'
 
@@ -17,6 +17,7 @@ export function useLive(onAuthLost: () => void) {
   const [sensors, setSensors] = useState<Series | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   const [catalog, setCatalog] = useState<FailureCatalog | null>(null)
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [error, setError] = useState('')
   const lastX = useRef(0)
@@ -109,6 +110,18 @@ export function useLive(onAuthLost: () => void) {
     } catch (e) { fail(e) }
   }, [fail, loadWindow])
 
+  useEffect(() => {
+    if (!me) return
+    api.workOrders().then(setWorkOrders).catch(() => { /* shown as empty */ })
+  }, [me])
+
+  const createWorkOrder = useCallback(async (b: NewWorkOrder) => {
+    try { const w = await api.createWorkOrder(b); setWorkOrders((p) => [w, ...p]); return w } catch (e) { fail(e); return null }
+  }, [fail])
+  const updateWorkOrder = useCallback(async (id: string, b: WorkOrderPatch) => {
+    try { const w = await api.updateWorkOrder(id, b); setWorkOrders((p) => p.map((x) => (x.id === w.id ? w : x))); return w } catch (e) { fail(e); return null }
+  }, [fail])
+
   const patch = useCallback(async (fn: () => Promise<Alert>) => {
     try { const a = await fn(); setAlerts((p) => p.map((x) => (x.id === a.id ? a : x))) } catch (e) { fail(e) }
   }, [fail])
@@ -121,8 +134,8 @@ export function useLive(onAuthLost: () => void) {
   }, [fail])
 
   return {
-    me, catalog, feedback, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
-    reloadModel,
+    me, catalog, feedback, workOrders, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
+    reloadModel, createWorkOrder, updateWorkOrder,
     play: () => act(api.play), pause: () => act(api.pause),
     setSpeed: (n: number) => act(() => api.speed(n)),
     seek: (t: string) => act(() => api.seek(t), true),
