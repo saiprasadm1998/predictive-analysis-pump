@@ -66,6 +66,8 @@ app.get("/api/scenarios", wrap(async (_req, res) => {
   }));
 }));
 
+app.get("/api/failures", wrap(async (_req, res) => res.json(await ml.failures())));
+
 app.get("/api/alerts", wrap(async (_req, res) => res.json(await store.alerts.list(replay.state().t))));
 app.post("/api/alerts/:id/ack", requireRole("operator"), wrap(async (req, res) => {
   const a = await store.alerts.ack(String(req.params.id), req.session!.sub);

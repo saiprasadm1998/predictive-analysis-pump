@@ -3,7 +3,7 @@ import { AlertEngine } from "./alerts.js";
 import type { Reading } from "./types.js";
 
 const r = (ratio: number, runAbove = 0, runBelow = 0): Reading => ({
-  t: "2018-05-19 03:00:00", health: 50, ratio, state: "warning", label: "NORMAL", run_above: runAbove, run_below: runBelow,
+  t: "2018-05-19 03:00:00", health: 50, ratio, state: "warning", label: "NORMAL", run_above: runAbove, run_below: runBelow, match: null,
   top_sensors: [{ sensor: "sensor_04", share: 0.5 }],
 });
 
@@ -42,5 +42,16 @@ describe("AlertEngine ids and reset", () => {
     const closed = e.reset();
     expect(closed?.status).toBe("closed");
     expect(e.alerts).toHaveLength(0);
+  });
+});
+
+describe("AlertEngine pattern match", () => {
+  it("keeps the match from the peak reading", () => {
+    const e = new AlertEngine();
+    const m = (sim: number) => ({ failure: "2018-04-12 21:55:00", similarity: sim, level: "weak" as const, fingerprint: [], known_failures: 1 });
+    e.push({ ...r(1.5, 30), match: m(0.2) });
+    e.push({ ...r(2.4, 60), match: m(0.7) });
+    e.push({ ...r(1.8, 90), match: m(0.1) });
+    expect(e.alerts[0].match?.similarity).toBe(0.7);
   });
 });

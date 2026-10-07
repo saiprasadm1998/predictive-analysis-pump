@@ -127,3 +127,5 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   header.top { gap: 8px; }
 }
 .btn:disabled, select:disabled, input:disabled { opacity: .5; cursor: not-allowed; }
+.match { margin-top: 6px; color: var(--ink-2); max-width: 70ch; font-size: 13px; }
+.match b { color: var(--ink); }

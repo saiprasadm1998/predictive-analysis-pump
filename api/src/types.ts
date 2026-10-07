@@ -2,6 +2,14 @@ export type PumpState = "healthy" | "watch" | "warning" | "critical";
 
 export interface TopSensor { sensor: string; share: number }
 
+export interface Match {
+  failure: string;
+  similarity: number;
+  level: "strong" | "possible" | "weak";
+  fingerprint: { sensor: string; z: number }[];
+  known_failures: number;
+}
+
 export interface Reading {
   t: string;
   health: number;
@@ -11,6 +19,7 @@ export interface Reading {
   top_sensors: TopSensor[];
   run_above: number;   // consecutive minutes above the alarm threshold
   run_below: number;   // consecutive minutes below 0.8x threshold
+  match: Match | null; // closest already-recorded failure, only while above the alarm level
 }
 
 export type Role = "viewer" | "operator" | "admin";
@@ -46,4 +55,5 @@ export interface Alert {
   recovery: boolean;   // opened within 48h after a recorded failure (pump restarting)
   acknowledgedBy?: string;
   acknowledgedAt?: string;
+  match?: Match | null;  // closest recorded failure at the alert's peak
 }

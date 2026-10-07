@@ -2,6 +2,24 @@ export type PumpState = 'healthy' | 'watch' | 'warning' | 'critical'
 
 export interface TopSensor { sensor: string; share: number }
 
+export interface Match {
+  failure: string
+  similarity: number
+  level: 'strong' | 'possible' | 'weak'
+  fingerprint: { sensor: string; z: number }[]
+  known_failures: number
+}
+
+export interface FailureCatalog {
+  thresholds: { possible: number; strong: number }
+  failures: {
+    failure: string
+    lead_hours: number | null
+    fingerprint: { sensor: string; z: number }[]
+    most_similar: { failure: string; similarity: number } | null
+  }[]
+}
+
 export interface Reading {
   t: string
   health: number
@@ -11,6 +29,7 @@ export interface Reading {
   top_sensors: TopSensor[]
   run_above: number
   run_below: number
+  match: Match | null
 }
 
 export interface Me { username: string; role: 'viewer' | 'operator' | 'admin' }
@@ -29,6 +48,7 @@ export interface Alert {
   recovery: boolean
   acknowledgedBy?: string
   acknowledgedAt?: string
+  match?: Match | null
 }
 
 export interface ReplayState {

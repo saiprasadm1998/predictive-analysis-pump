@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Login from './components/Login'
 import LineChart from './components/LineChart'
 import BarList from './components/BarList'
+import FailureCatalog, { MatchLine } from './components/FailureCatalog'
 import StateBadge, { STATE_META, StateIcon } from './components/StateBadge'
 import { clearToken, hasToken } from './lib/api'
 import { useLive } from './lib/useLive'
@@ -29,7 +30,7 @@ function useTheme() {
 
 function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const live = useLive(onSignOut)
-  const { me, replay, reading, alerts, meta, scenarios, health, sensors } = live
+  const { me, catalog, replay, reading, alerts, meta, scenarios, health, sensors } = live
   const canAct = me?.role !== 'viewer'
   const theme = useTheme()
   const [table, setTable] = useState(false)
@@ -185,10 +186,12 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         {alerts.length === 0 ? <div className="empty">No alerts yet. Press Play, or jump to a failure run-up.</div> : (
           <div className="table-wrap"><table>
             <thead><tr><th>Alert</th><th>Opened</th><th className="num">Peak</th><th>Outcome</th><th /></tr></thead>
-            <tbody>{alerts.map((a) => <AlertRow key={a.id} a={a} onAck={live.ack} canAct={canAct} />)}</tbody>
+            <tbody>{alerts.map((a) => <AlertRow key={a.id} a={a} onAck={live.ack} canAct={canAct} thresholds={catalog?.thresholds} />)}</tbody>
           </table></div>
         )}
       </section>
+
+      <FailureCatalog catalog={catalog} />
 
       <p className="hint" style={{ marginTop: 16 }}>
         Model: distance from normal operating behaviour across 51 sensors, trained on the healthy periods of this dataset.
@@ -198,13 +201,14 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   )
 }
 
-function AlertRow({ a, onAck, canAct }: { a: Alert; onAck: (id: string) => void; canAct: boolean }) {
+function AlertRow({ a, onAck, canAct, thresholds }: { a: Alert; onAck: (id: string) => void; canAct: boolean; thresholds?: { possible: number; strong: number } }) {
   const st = a.severity === 'critical' ? 'critical' : 'warning'
   return (
     <tr>
       <td>
         <span className="sev"><StateIcon state={st} />{a.severity === 'critical' ? 'Critical' : 'Warning'}</span>
         <div className="summary">{a.summary}</div>
+        <MatchLine match={a.match} thresholds={thresholds} />
       </td>
       <td>{shortDateTime(parseT(a.start))}<div className="hint">{a.status === 'open' ? 'ongoing' : `closed ${shortDateTime(parseT(a.end!))}`}</div></td>
       <td className="num">{a.peakRatio.toFixed(1)}×</td>

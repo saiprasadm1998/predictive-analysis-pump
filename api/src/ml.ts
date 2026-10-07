@@ -23,7 +23,18 @@ export interface Meta {
   };
 }
 
+export interface FailureCatalog {
+  thresholds: { possible: number; strong: number };
+  failures: {
+    failure: string;
+    lead_hours: number | null;
+    fingerprint: { sensor: string; z: number }[];
+    most_similar: { failure: string; similarity: number } | null;
+  }[];
+}
+
 export const ml = {
+  failures: () => get<FailureCatalog>("/failures"),
   meta: () => get<Meta>("/meta"),
   at: (t: string) => get<Reading>("/at", { t }),
   scores: (start: string, end: string, step: number) =>

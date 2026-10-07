@@ -22,7 +22,7 @@ export class AlertEngine {
         id: "a" + r.t.replace(/\D/g, ""), start: r.t, end: null, peakRatio: r.ratio,
         severity: r.ratio > 2 ? "critical" : "warning", status: "open", acknowledged: false,
         topSensors: r.top_sensors, summary: "", failureAfterHours: null,
-        recovery: this.inRecovery(r.t),
+        recovery: this.inRecovery(r.t), match: r.match,
       };
       a.summary = summarise(a.severity, a.peakRatio, a.topSensors, r.t);
       this.alerts.unshift(a);
@@ -33,7 +33,7 @@ export class AlertEngine {
       const a = this.current;
       let changed = false;
       if (r.ratio > a.peakRatio) {
-        a.peakRatio = r.ratio; a.topSensors = r.top_sensors;
+        a.peakRatio = r.ratio; a.topSensors = r.top_sensors; a.match = r.match;
         const sev = r.ratio > 2 ? "critical" : "warning";
         if (sev !== a.severity) a.severity = sev;
         a.summary = summarise(a.severity, a.peakRatio, a.topSensors, r.t);

@@ -8,6 +8,8 @@ from fastapi import FastAPI, HTTPException, Query
 sys.path.insert(0, str(Path(__file__).parent))
 from features import load, sensor_cols
 from model import PumpModel, ART
+from patterns import PatternLibrary
+from features import failure_times
 
 app = FastAPI(title="Pump Guardian ML service")
 STATE: dict = {}
@@ -26,6 +28,8 @@ def startup():
     STATE.update(df=df, model=model, sensors=sensor_cols(df),
                  scores=scores,
                  evaluation=json.loads((ART / "evaluation.json").read_text()))
+    leads = {f["failure"]: f["lead_hours"] for f in STATE["evaluation"]["failures"]}
+    STATE["patterns"] = PatternLibrary(df, model, scores, failure_times(df), leads)
 
 
 def _ts(value: str) -> pd.Timestamp:
@@ -83,7 +87,8 @@ def at(t: str):
     return {"t": str(sc.loc[:ts].index[-1]), "health": round(float(row.health), 1),
             "ratio": round(float(row.ratio), 3), "state": status,
             "label": row.status, "top_sensors": top,
-            "run_above": int(row.run_above), "run_below": int(row.run_below)}
+            "run_above": int(row.run_above), "run_below": int(row.run_below),
+            "match": STATE["patterns"].match(ts) if row.ratio > 1 else None}
 
 
 @app.get("/alerts")
@@ -102,3 +107,9 @@ def alerts(min_gap_hours: int = 6):
                     "minutes": int(len(g)),
                     "severity": "critical" if g.ratio.max() > 2 else "warning"})
     return out
+
+
+@app.get("/failures")
+def failures():
+    """Catalogue of recorded failures: fingerprints, lead times and how alike they are."""
+    return STATE["patterns"].catalog()

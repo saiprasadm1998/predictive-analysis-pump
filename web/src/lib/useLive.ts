@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, connectLive } from './api'
-import type { Alert, Me, Meta, Reading, ReplayState, Scenario, Series } from './types'
+import type { Alert, FailureCatalog, Me, Meta, Reading, ReplayState, Scenario, Series } from './types'
 import { HOUR, fmtT, parseT } from './time'
 import type { Pt } from '../components/LineChart'
 
@@ -16,6 +16,7 @@ export function useLive(onAuthLost: () => void) {
   const [loadingWindow, setLoadingWindow] = useState(false)
   const [sensors, setSensors] = useState<Series | null>(null)
   const [me, setMe] = useState<Me | null>(null)
+  const [catalog, setCatalog] = useState<FailureCatalog | null>(null)
   const [error, setError] = useState('')
   const lastX = useRef(0)
   const sensorKey = useRef('')
@@ -50,9 +51,9 @@ export function useLive(onAuthLost: () => void) {
     let closed = false
     ;(async () => {
       try {
-        const [s, m, sc, al, who] = await Promise.all([api.state(), api.meta(), api.scenarios(), api.alerts(), api.me()])
+        const [s, m, sc, al, who, cat] = await Promise.all([api.state(), api.meta(), api.scenarios(), api.alerts(), api.me(), api.failures()])
         if (closed) return
-        setMe(who); setReplay(s); setMeta(m); setScenarios(sc); setAlerts(al)
+        setMe(who); setCatalog(cat); setReplay(s); setMeta(m); setScenarios(sc); setAlerts(al)
         if (s.latest) setReading(s.latest)
         await loadWindow(s.t)
         off = connectLive((msg) => {
@@ -98,7 +99,7 @@ export function useLive(onAuthLost: () => void) {
   }, [fail])
 
   return {
-    me, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
+    me, catalog, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
     play: () => act(api.play), pause: () => act(api.pause),
     setSpeed: (n: number) => act(() => api.speed(n)),
     seek: (t: string) => act(() => api.seek(t), true),
