@@ -1,0 +1,192 @@
+{
+  "threshold": 223.22150753683218,
+  "lookback_hours": 72,
+  "failures_detected": 6,
+  "failures_total": 7,
+  "healthy_alarm_rate": 0.0119,
+  "healthy_false_alarm_episodes": 13,
+  "failures": [
+    {
+      "failure": "2018-04-12 21:55:00",
+      "lead_hours": 48.1,
+      "top_sensors": [
+        {
+          "sensor": "sensor_01",
+          "share": 0.14
+        },
+        {
+          "sensor": "sensor_04",
+          "share": 0.134
+        },
+        {
+          "sensor": "sensor_50",
+          "share": 0.134
+        },
+        {
+          "sensor": "sensor_14",
+          "share": 0.117
+        },
+        {
+          "sensor": "sensor_20",
+          "share": 0.097
+        }
+      ]
+    },
+    {
+      "failure": "2018-04-18 00:30:00",
+      "lead_hours": 53.1,
+      "top_sensors": [
+        {
+          "sensor": "sensor_04",
+          "share": 0.186
+        },
+        {
+          "sensor": "sensor_09",
+          "share": 0.123
+        },
+        {
+          "sensor": "sensor_01",
+          "share": 0.103
+        },
+        {
+          "sensor": "sensor_02",
+          "share": 0.097
+        },
+        {
+          "sensor": "sensor_48",
+          "share": 0.074
+        }
+      ]
+    },
+    {
+      "failure": "2018-05-19 03:18:00",
+      "lead_hours": 71.6,
+      "top_sensors": [
+        {
+          "sensor": "sensor_28",
+          "share": 0.182
+        },
+        {
+          "sensor": "sensor_26",
+          "share": 0.162
+        },
+        {
+          "sensor": "sensor_17",
+          "share": 0.158
+        },
+        {
+          "sensor": "sensor_09",
+          "share": 0.145
+        },
+        {
+          "sensor": "sensor_12",
+          "share": 0.142
+        }
+      ]
+    },
+    {
+      "failure": "2018-05-25 00:30:00",
+      "lead_hours": 59.4,
+      "top_sensors": [
+        {
+          "sensor": "sensor_40",
+          "share": 0.34
+        },
+        {
+          "sensor": "sensor_41",
+          "share": 0.279
+        },
+        {
+          "sensor": "sensor_22",
+          "share": 0.218
+        },
+        {
+          "sensor": "sensor_42",
+          "share": 0.099
+        },
+        {
+          "sensor": "sensor_36",
+          "share": 0.092
+        }
+      ]
+    },
+    {
+      "failure": "2018-06-28 22:00:00",
+      "lead_hours": 63.4,
+      "top_sensors": [
+        {
+          "sensor": "sensor_23",
+          "share": 0.286
+        },
+        {
+          "sensor": "sensor_05",
+          "share": 0.218
+        },
+        {
+          "sensor": "sensor_10",
+          "share": 0.217
+        },
+        {
+          "sensor": "sensor_18",
+          "share": 0.178
+        },
+        {
+          "sensor": "sensor_35",
+          "share": 0.092
+        }
+      ]
+    },
+    {
+      "failure": "2018-07-08 00:11:00",
+      "lead_hours": 72.0,
+      "top_sensors": [
+        {
+          "sensor": "sensor_35",
+          "share": 0.194
+        },
+        {
+          "sensor": "sensor_41",
+          "share": 0.131
+        },
+        {
+          "sensor": "sensor_01",
+          "share": 0.13
+        },
+        {
+          "sensor": "sensor_00",
+          "share": 0.12
+        },
+        {
+          "sensor": "sensor_06",
+          "share": 0.117
+        }
+      ]
+    },
+    {
+      "failure": "2018-07-25 14:00:00",
+      "lead_hours": null,
+      "top_sensors": [
+        {
+          "sensor": "sensor_04",
+          "share": 0.705
+        },
+        {
+          "sensor": "sensor_26",
+          "share": 0.109
+        },
+        {
+          "sensor": "sensor_34",
+          "share": 0.093
+        },
+        {
+          "sensor": "sensor_02",
+          "share": 0.059
+        },
+        {
+          "sensor": "sensor_23",
+          "share": 0.053
+        }
+      ]
+    }
+  ]
+}
