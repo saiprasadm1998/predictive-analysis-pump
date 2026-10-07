@@ -1,5 +1,7 @@
 # Pump Guardian
 
+![Dashboard replaying the run-up to a recorded failure](docs/dashboard.png)
+
 Predictive-maintenance dashboard for oil & gas pumps. Learns what healthy operation looks like from
 51 sensors, scores every reading, and warns before failures.
 
@@ -17,6 +19,9 @@ uvicorn --app-dir src server:app --port 8000
 
 # 2. API
 cd api && npm install && npm run dev     # :4000, demo login operator / pumps123 (set DEMO_USER, DEMO_PASS, JWT_SECRET)
+
+# 3. Dashboard
+cd web && npm install && npm run dev     # :5173, proxies /api and /ws to :4000
 ```
 
 ## Model results (honest numbers)
@@ -27,4 +32,4 @@ Detects 6 of 7 recorded failures 47-72h ahead (look-back capped at 72h); the 25 
 is missed. About 19 alert episodes occur during healthy operation over four months.
 Threshold and training data come from the same period, so treat results as optimistic.
 
-Status: work in progress (React dashboard next).
+Status: work in progress. Next: static demo build for Vercel, MongoDB persistence for alerts and users.

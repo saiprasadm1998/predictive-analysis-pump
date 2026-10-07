@@ -21,6 +21,7 @@ export class AlertEngine {
         id: this.nextId++, start: r.t, end: null, peakRatio: r.ratio,
         severity: r.ratio > 2 ? "critical" : "warning", status: "open", acknowledged: false,
         topSensors: r.top_sensors, summary: "", failureAfterHours: null,
+        recovery: this.inRecovery(r.t),
       };
       a.summary = summarise(a.severity, a.peakRatio, a.topSensors, r.t);
       this.alerts.unshift(a);
@@ -48,6 +49,11 @@ export class AlertEngine {
       return changed ? a : null;
     }
     return null;
+  }
+
+  private inRecovery(t: string): boolean {
+    const ms = Date.parse(t.replace(" ", "T") + "Z");
+    return this.failures.some((f) => ms >= f && ms - f <= 48 * 3600e3);
   }
 
   ack(id: number): Alert | undefined {

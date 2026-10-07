@@ -24,4 +24,5 @@ export interface Alert {
   topSensors: TopSensor[];
   summary: string;
   failureAfterHours: number | null;
+  recovery: boolean;   // opened within 48h after a recorded failure (pump restarting)
 }
