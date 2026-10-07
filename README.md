@@ -7,7 +7,9 @@ Predictive-maintenance dashboard for oil & gas pumps. Learns what healthy operat
 
 Stack: React + TypeScript (web), Node + TypeScript (api), Python + scikit-learn + FastAPI (ml).
 
-Dataset: Kaggle "Pump Sensor Data" (`sensor.csv`, place in `ml/data/`, not committed).
+Dataset: Kaggle "Pump Sensor Data" (`sensor.csv`, about 124 MB). It is not committed: GitHub rejects files over
+100 MB, and the data belongs to its Kaggle author. Download it from Kaggle (search "Pump Sensor Data" by nphantawee)
+and place it at `ml/data/sensor.csv` before running `python src/train.py`.
 
 ## Run
 
@@ -43,4 +45,4 @@ Threshold and training data come from the same period, so treat results as optim
 
 Roles: `viewer` (read only), `operator` (replay control, acknowledge alerts), `admin` (also manage users via `POST /api/users`).
 
-Status: work in progress. Next: static demo build for Vercel, MongoDB persistence for alerts and users.
+Runs locally; MongoDB Atlas is optional.
