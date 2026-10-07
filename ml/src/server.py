@@ -17,8 +17,14 @@ STATE: dict = {}
 def startup():
     df = load()
     model = PumpModel.load()
+    scores = pd.read_parquet(ART / "scores.parquet")
+    above = (scores["ratio"] > 1.0).astype(int)
+    below = (scores["ratio"] < 0.8).astype(int)
+    # consecutive minutes currently above / below threshold (persistence), used for alerting
+    scores["run_above"] = above.groupby((above == 0).cumsum()).cumsum()
+    scores["run_below"] = below.groupby((below == 0).cumsum()).cumsum()
     STATE.update(df=df, model=model, sensors=sensor_cols(df),
-                 scores=pd.read_parquet(ART / "scores.parquet"),
+                 scores=scores,
                  evaluation=json.loads((ART / "evaluation.json").read_text()))
 
 
@@ -76,7 +82,8 @@ def at(t: str):
     status = "critical" if row.ratio > 2 else "warning" if row.ratio > 1 else "watch" if row.ratio > 0.7 else "healthy"
     return {"t": str(sc.loc[:ts].index[-1]), "health": round(float(row.health), 1),
             "ratio": round(float(row.ratio), 3), "state": status,
-            "label": row.status, "top_sensors": top}
+            "label": row.status, "top_sensors": top,
+            "run_above": int(row.run_above), "run_below": int(row.run_below)}
 
 
 @app.get("/alerts")
