@@ -54,7 +54,8 @@ export class Replay extends EventEmitter {
   async seek(t: string) {
     const ms = Math.min(Math.max(parse(t), this.start), this.end);
     this.now = ms;
-    this.engine.reset();
+    const closed = this.engine.reset();
+    if (closed) this.emit("alert", closed);
     this.latest = await ml.at(fmt(ms));
     this.emit("reading", this.latest);
     this.emit("state", this.state());

@@ -1,14 +1,15 @@
 {
   "threshold": 223.22150753683218,
   "lookback_hours": 72,
+  "persistence_minutes": 30,
   "failures_detected": 6,
   "failures_total": 7,
   "healthy_alarm_rate": 0.0119,
-  "healthy_false_alarm_episodes": 13,
+  "healthy_false_alarm_episodes": 16,
   "failures": [
     {
       "failure": "2018-04-12 21:55:00",
-      "lead_hours": 48.1,
+      "lead_hours": 46.8,
       "top_sensors": [
         {
           "sensor": "sensor_01",
@@ -34,7 +35,7 @@
     },
     {
       "failure": "2018-04-18 00:30:00",
-      "lead_hours": 53.1,
+      "lead_hours": 52.6,
       "top_sensors": [
         {
           "sensor": "sensor_04",
@@ -60,7 +61,7 @@
     },
     {
       "failure": "2018-05-19 03:18:00",
-      "lead_hours": 71.6,
+      "lead_hours": 71.1,
       "top_sensors": [
         {
           "sensor": "sensor_28",
@@ -86,7 +87,7 @@
     },
     {
       "failure": "2018-05-25 00:30:00",
-      "lead_hours": 59.4,
+      "lead_hours": 59.0,
       "top_sensors": [
         {
           "sensor": "sensor_40",
@@ -112,7 +113,7 @@
     },
     {
       "failure": "2018-06-28 22:00:00",
-      "lead_hours": 63.4,
+      "lead_hours": 60.1,
       "top_sensors": [
         {
           "sensor": "sensor_23",

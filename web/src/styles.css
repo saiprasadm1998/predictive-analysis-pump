@@ -126,3 +126,4 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .simtime { text-align: left; }
   header.top { gap: 8px; }
 }
+.btn:disabled, select:disabled, input:disabled { opacity: .5; cursor: not-allowed; }

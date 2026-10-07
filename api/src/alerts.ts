@@ -6,7 +6,7 @@ export const CLOSE_AFTER_MIN = 180;  // minutes below 0.8x threshold before it c
 
 export class AlertEngine {
   alerts: Alert[] = [];
-  private nextId = 1;
+  private lastSeen = "";
   private current: Alert | null = null;
   private failures: number[] = [];
 
@@ -16,9 +16,10 @@ export class AlertEngine {
 
   /** Feed one reading; returns an alert if one was opened or changed this tick. */
   push(r: Reading): Alert | null {
+    this.lastSeen = r.t;
     if (!this.current && r.run_above >= OPEN_AFTER_MIN) {
       const a: Alert = {
-        id: this.nextId++, start: r.t, end: null, peakRatio: r.ratio,
+        id: "a" + r.t.replace(/\D/g, ""), start: r.t, end: null, peakRatio: r.ratio,
         severity: r.ratio > 2 ? "critical" : "warning", status: "open", acknowledged: false,
         topSensors: r.top_sensors, summary: "", failureAfterHours: null,
         recovery: this.inRecovery(r.t),
@@ -56,11 +57,11 @@ export class AlertEngine {
     return this.failures.some((f) => ms >= f && ms - f <= 48 * 3600e3);
   }
 
-  ack(id: number): Alert | undefined {
-    const a = this.alerts.find((x) => x.id === id);
-    if (a) a.acknowledged = true;
-    return a;
+  /** Called on seek: the live detector starts fresh. An alert still open is closed where we last saw it. */
+  reset(): Alert | null {
+    const open = this.current;
+    if (open) { open.status = "closed"; open.end = this.lastSeen || open.start; }
+    this.alerts = []; this.current = null;
+    return open;
   }
-
-  reset() { this.alerts = []; this.current = null; this.nextId = 1; }
 }

@@ -27,20 +27,27 @@ def main():
     scores = model.score(df)
     scores["status"] = df["machine_status"]
     scores.to_parquet(ART / "scores.parquet")
+    # persistence rule used by the live alerting: ratio above 1 for 30 consecutive minutes
+    above = (scores["ratio"] > 1.0).astype(int)
+    run_above = above.groupby((above == 0).cumsum()).cumsum()
+    PERSIST_MIN = 30
 
     # lead-time evaluation
     results = []
     for f in ft:
         w = scores.loc[f - pd.Timedelta(hours=LOOKBACK_H): f]
-        a = w[w["ratio"] > 1.0]
+        a = w[run_above.loc[w.index] >= PERSIST_MIN]   # moment an alert would actually open
         lead = None if a.empty else round((f - a.index[0]).total_seconds() / 3600, 1)
         top = model.contributions(df.loc[f - pd.Timedelta(hours=1): f]).head(5)
         results.append({"failure": str(f), "lead_hours": lead,
                         "top_sensors": [{"sensor": k, "share": round(float(v / max(model.contributions(df.loc[f - pd.Timedelta(hours=1): f]).sum(), 1e-9)), 3)} for k, v in top.items()]})
+    mask = ok.copy()
+    for f in ft:  # ignore the run-up to and recovery after failures; those alerts are expected
+        mask &= ~((df.index > f - pd.Timedelta(hours=72)) & (df.index < f + pd.Timedelta(days=2)))
+    opens = (run_above == PERSIST_MIN) & mask      # one event per alert opening
+    episodes = int(opens.sum())
     r = scores[ok]["ratio"]
-    al = r[r > 1.0].index
-    episodes = int((np.diff(al.values).astype("timedelta64[m]").astype(int) > 360).sum() + 1) if len(al) else 0
-    summary = {"threshold": model.threshold, "lookback_hours": LOOKBACK_H,
+    summary = {"threshold": model.threshold, "lookback_hours": LOOKBACK_H, "persistence_minutes": PERSIST_MIN,
                "failures_detected": sum(1 for x in results if x["lead_hours"] is not None),
                "failures_total": len(results),
                "healthy_alarm_rate": round(float((r > 1.0).mean()), 4),

@@ -29,7 +29,8 @@ function useTheme() {
 
 function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const live = useLive(onSignOut)
-  const { replay, reading, alerts, meta, scenarios, health, sensors } = live
+  const { me, replay, reading, alerts, meta, scenarios, health, sensors } = live
+  const canAct = me?.role !== 'viewer'
   const theme = useTheme()
   const [table, setTable] = useState(false)
   const [scrub, setScrub] = useState<number | null>(null)
@@ -57,6 +58,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
       <header className="top">
         <h1>Pump Guardian</h1>
         <span className="asset">Pump P-101 · replaying recorded sensor history (51 sensors)</span>
+        {me && <span className="pill">{me.username} · {me.role}</span>}
         <span className="spacer" />
         <button className="btn" onClick={theme.toggle} aria-label="Toggle dark mode">{theme.dark ? 'Light' : 'Dark'} mode</button>
         <button className="btn" onClick={() => { clearToken(); onSignOut() }}>Sign out</button>
@@ -65,16 +67,16 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
       {live.error && <div className="banner" role="alert">{live.error}</div>}
 
       <section className="controls" aria-label="Replay controls">
-        <button className="btn primary" onClick={replay.playing ? live.pause : live.play} style={{ minWidth: 80 }}>
+        <button className="btn primary" disabled={!canAct} onClick={replay.playing ? live.pause : live.play} style={{ minWidth: 80 }}>
           {replay.playing ? 'Pause' : 'Play'}
         </button>
         <label>Speed
-          <select value={replay.speed} onChange={(e) => live.setSpeed(Number(e.target.value))}>
+          <select disabled={!canAct} value={replay.speed} onChange={(e) => live.setSpeed(Number(e.target.value))}>
             {[...new Set([...SPEEDS, replay.speed])].sort((a, b) => a - b).map((s) => <option key={s} value={s}>1 s = {s} min</option>)}
           </select>
         </label>
         <label>Jump to
-          <select value="" onChange={(e) => { const s = scenarios.find((x) => String(x.id) === e.target.value); if (s) void live.jumpToScenario(s) }}>
+          <select disabled={!canAct} value="" onChange={(e) => { const s = scenarios.find((x) => String(x.id) === e.target.value); if (s) void live.jumpToScenario(s) }}>
             <option value="">a failure run-up…</option>
             {scenarios.map((s) => (
               <option key={s.id} value={s.id}>
@@ -84,7 +86,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
           </select>
         </label>
         <input className="scrub" type="range" min={startMs} max={endMs} step={3600e3} value={shownMs}
-          aria-label="Position in recorded history"
+          aria-label="Position in recorded history" disabled={!canAct}
           onChange={(e) => setScrub(Number(e.target.value))} onPointerUp={commitScrub} onKeyUp={commitScrub} />
         <span className="simtime">{shortDateTime(shownMs)}</span>
       </section>
@@ -183,7 +185,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         {alerts.length === 0 ? <div className="empty">No alerts yet. Press Play, or jump to a failure run-up.</div> : (
           <div className="table-wrap"><table>
             <thead><tr><th>Alert</th><th>Opened</th><th className="num">Peak</th><th>Outcome</th><th /></tr></thead>
-            <tbody>{alerts.map((a) => <AlertRow key={a.id} a={a} onAck={live.ack} />)}</tbody>
+            <tbody>{alerts.map((a) => <AlertRow key={a.id} a={a} onAck={live.ack} canAct={canAct} />)}</tbody>
           </table></div>
         )}
       </section>
@@ -196,7 +198,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   )
 }
 
-function AlertRow({ a, onAck }: { a: Alert; onAck: (id: number) => void }) {
+function AlertRow({ a, onAck, canAct }: { a: Alert; onAck: (id: string) => void; canAct: boolean }) {
   const st = a.severity === 'critical' ? 'critical' : 'warning'
   return (
     <tr>
@@ -207,7 +209,7 @@ function AlertRow({ a, onAck }: { a: Alert; onAck: (id: number) => void }) {
       <td>{shortDateTime(parseT(a.start))}<div className="hint">{a.status === 'open' ? 'ongoing' : `closed ${shortDateTime(parseT(a.end!))}`}</div></td>
       <td className="num">{a.peakRatio.toFixed(1)}×</td>
       <td>{a.recovery ? 'Pump restarting after a recorded failure' : a.failureAfterHours ? `Failure followed ${a.failureAfterHours} h later` : a.status === 'open' ? 'In progress' : 'No failure within 72 h'}</td>
-      <td>{a.acknowledged ? <span className="pill">Acknowledged</span> : <button className="btn" onClick={() => onAck(a.id)}>Acknowledge</button>}</td>
+      <td>{a.acknowledged ? <span className="pill">Acknowledged{a.acknowledgedBy ? ` by ${a.acknowledgedBy}` : ''}</span> : canAct ? <button className="btn" onClick={() => onAck(a.id)}>Acknowledge</button> : null}</td>
     </tr>
   )
 }

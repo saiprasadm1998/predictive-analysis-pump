@@ -1,4 +1,4 @@
-import type { Alert, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
+import type { Alert, Me, Meta, Reading, ReplayState, Scenario, ScorePoint, Series } from './types'
 
 let token: string | null = null
 try { token = localStorage.getItem('pg_token') } catch { /* storage unavailable */ }
@@ -32,11 +32,12 @@ export async function login(username: string, password: string): Promise<void> {
 const post = (body: object) => call<ReplayState>('/api/replay', { method: 'POST', body: JSON.stringify(body) })
 
 export const api = {
+  me: () => call<Me>('/api/me'),
   state: () => call<ReplayState>('/api/state'),
   meta: () => call<Meta>('/api/meta'),
   scenarios: () => call<Scenario[]>('/api/scenarios'),
   alerts: () => call<Alert[]>('/api/alerts'),
-  ack: (id: number) => call<Alert>(`/api/alerts/${id}/ack`, { method: 'POST' }),
+  ack: (id: string) => call<Alert>(`/api/alerts/${id}/ack`, { method: 'POST' }),
   play: () => post({ action: 'play' }),
   pause: () => post({ action: 'pause' }),
   speed: (speed: number) => post({ action: 'speed', speed }),

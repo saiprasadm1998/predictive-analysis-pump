@@ -2,40 +2,61 @@ import express from "express";
 import cors from "cors";
 import { createServer } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
+import type { ZodType } from "zod";
 import { config } from "./config.js";
-import { login, requireAuth, verify } from "./auth.js";
+import { clearFailures, hashPassword, login, recordFailure, requireAuth, requireRole, seedAdmin, throttled, verify } from "./auth.js";
 import { ml } from "./ml.js";
 import { Replay } from "./replay.js";
+import { createStore, DuplicateError } from "./store/index.js";
+import { createUserBody, loginBody, readingsQuery, replayBody, scoresQuery } from "./schemas.js";
+import type { Alert } from "./types.js";
 
+const store = createStore();
+const replay = new Replay();
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "20kb" }));
 
-const replay = new Replay();
+/** Validate and return typed input, or answer 400 with the first problem. */
+function parse<T>(schema: ZodType<T>, data: unknown, res: express.Response): T | null {
+  const r = schema.safeParse(data);
+  if (r.success) return r.data;
+  res.status(400).json({ error: "invalid request", detail: r.error.issues[0]?.message ?? "bad input" });
+  return null;
+}
+const wrap = (fn: express.RequestHandler): express.RequestHandler => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-app.post("/api/auth/login", (req, res) => {
-  const token = login(String(req.body?.username ?? ""), String(req.body?.password ?? ""));
-  token ? res.json({ token }) : res.status(401).json({ error: "bad credentials" });
-});
+app.get("/api/health", (_req, res) => res.json({ ok: true, store: store.kind }));
 
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.post("/api/auth/login", wrap(async (req, res) => {
+  const body = parse(loginBody, req.body, res);
+  if (!body) return;
+  const key = `${req.ip}:${body.username.toLowerCase()}`;
+  if (throttled(key)) return void res.status(429).json({ error: "too many attempts, try again later" });
+  const token = await login(store, body.username, body.password);
+  if (!token) { recordFailure(key); return void res.status(401).json({ error: "bad credentials" }); }
+  clearFailures(key);
+  res.json({ token });
+}));
+
 app.use("/api", requireAuth);
 
+app.get("/api/me", (req, res) => res.json({ username: req.session!.sub, role: req.session!.role }));
 app.get("/api/state", (_req, res) => res.json(replay.state()));
-app.get("/api/meta", async (_req, res) => res.json(await ml.meta()));
+app.get("/api/meta", wrap(async (_req, res) => res.json(await ml.meta())));
 
-app.post("/api/replay", async (req, res) => {
-  const { action, t, speed } = req.body ?? {};
-  if (action === "play") replay.play();
-  else if (action === "pause") replay.pause();
-  else if (action === "speed" && Number.isFinite(speed)) replay.setSpeed(speed);
-  else if (action === "seek" && typeof t === "string") await replay.seek(t);
-  else return res.status(400).json({ error: "bad action" });
+app.post("/api/replay", requireRole("operator"), wrap(async (req, res) => {
+  const b = parse(replayBody, req.body, res);
+  if (!b) return;
+  if (b.action === "play") replay.play();
+  else if (b.action === "pause") replay.pause();
+  else if (b.action === "speed") replay.setSpeed(b.speed);
+  else await replay.seek(b.t);
   res.json(replay.state());
-});
+}));
 
 /** Jump-to-failure scenarios: start 72h before each recorded failure. */
-app.get("/api/scenarios", async (_req, res) => {
+app.get("/api/scenarios", wrap(async (_req, res) => {
   const meta = await ml.meta();
   res.json(meta.evaluation.failures.map((f, i) => {
     const fail = Date.parse(f.failure.replace(" ", "T") + "Z");
@@ -43,18 +64,37 @@ app.get("/api/scenarios", async (_req, res) => {
       startAt: new Date(fail - 72 * 3600e3).toISOString().slice(0, 19).replace("T", " "),
       topSensors: f.top_sensors };
   }));
-});
+}));
 
-app.get("/api/alerts", (_req, res) => res.json(replay.engine.alerts));
-app.post("/api/alerts/:id/ack", (req, res) => {
-  const a = replay.engine.ack(Number(req.params.id));
+app.get("/api/alerts", wrap(async (_req, res) => res.json(await store.alerts.list(replay.state().t))));
+app.post("/api/alerts/:id/ack", requireRole("operator"), wrap(async (req, res) => {
+  const a = await store.alerts.ack(String(req.params.id), req.session!.sub);
   a ? res.json(a) : res.status(404).json({ error: "not found" });
-});
+}));
 
-app.get("/api/scores", async (req, res) =>
-  res.json(await ml.scores(String(req.query.start), String(req.query.end), Number(req.query.step ?? 60))));
-app.get("/api/readings", async (req, res) =>
-  res.json(await ml.readings(String(req.query.start), String(req.query.end), String(req.query.sensors), Number(req.query.step ?? 15))));
+app.get("/api/model-runs", wrap(async (_req, res) => res.json(await store.modelRuns.list())));
+
+app.get("/api/users", requireRole("admin"), wrap(async (_req, res) => res.json(await store.users.list())));
+app.post("/api/users", requireRole("admin"), wrap(async (req, res) => {
+  const b = parse(createUserBody, req.body, res);
+  if (!b) return;
+  try {
+    const u = await store.users.create({ username: b.username, passwordHash: await hashPassword(b.password), role: b.role });
+    res.status(201).json({ username: u.username, role: u.role, createdAt: u.createdAt });
+  } catch (e) {
+    if (e instanceof DuplicateError) return void res.status(409).json({ error: "username taken" });
+    throw e;
+  }
+}));
+
+app.get("/api/scores", wrap(async (req, res) => {
+  const q = parse(scoresQuery, req.query, res);
+  if (q) res.json(await ml.scores(q.start, q.end, q.step));
+}));
+app.get("/api/readings", wrap(async (req, res) => {
+  const q = parse(readingsQuery, req.query, res);
+  if (q) res.json(await ml.readings(q.start, q.end, q.sensors, q.step));
+}));
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.message);
@@ -73,10 +113,25 @@ wss.on("connection", (ws, req) => {
   ws.send(JSON.stringify({ type: "state", data: replay.state() }));
 });
 replay.on("reading", (r) => send("reading", r));
-replay.on("alert", (a) => send("alert", a));
+replay.on("alert", (a: Alert) => {
+  // persist first, then tell clients; the stored copy keeps any acknowledgement
+  store.alerts.upsert(a).then(() => store.alerts.get(a.id)).then((saved) => send("alert", saved ?? a))
+    .catch((e: Error) => console.error("alert save failed:", e.message));
+});
 replay.on("state", (s) => send("state", s));
 replay.on("error", (e: Error) => console.error("replay:", e.message));
 
-replay.init().then(() => {
-  server.listen(config.port, () => console.log(`API on :${config.port}`));
-}).catch((e) => { console.error("cannot reach ML service:", e.message); process.exit(1); });
+async function main() {
+  await store.init();
+  await seedAdmin(store);
+  await replay.init();
+  const meta = await ml.meta();
+  const ev = meta.evaluation;
+  await store.modelRuns.record({
+    id: `thr-${meta.threshold.toFixed(3)}-d${ev.failures_detected}-e${ev.healthy_false_alarm_episodes}`, recordedAt: new Date().toISOString(), threshold: meta.threshold,
+    failuresDetected: ev.failures_detected, failuresTotal: ev.failures_total,
+    healthyAlarmRate: ev.healthy_alarm_rate, healthyFalseAlarmEpisodes: ev.healthy_false_alarm_episodes,
+  });
+  server.listen(config.port, () => console.log(`API on :${config.port} (store: ${store.kind})`));
+}
+main().catch((e: Error) => { console.error("startup failed:", e.message); process.exit(1); });

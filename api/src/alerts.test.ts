@@ -30,3 +30,17 @@ describe("AlertEngine", () => {
     expect(e.alerts[0].status).toBe("closed");
   });
 });
+
+describe("AlertEngine ids and reset", () => {
+  it("derives a stable id from the start time", () => {
+    const e = new AlertEngine();
+    expect(e.push(r(1.5, 30))?.id).toBe("a20180519030000");
+  });
+  it("closes the open alert on reset", () => {
+    const e = new AlertEngine();
+    e.push(r(1.5, 30));
+    const closed = e.reset();
+    expect(closed?.status).toBe("closed");
+    expect(e.alerts).toHaveLength(0);
+  });
+});

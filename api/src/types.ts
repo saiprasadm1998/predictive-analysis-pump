@@ -13,8 +13,27 @@ export interface Reading {
   run_below: number;   // consecutive minutes below 0.8x threshold
 }
 
+export type Role = "viewer" | "operator" | "admin";
+
+export interface User {
+  username: string;
+  passwordHash: string;
+  role: Role;
+  createdAt: string;
+}
+
+export interface ModelRun {
+  id: string;
+  recordedAt: string;
+  threshold: number;
+  failuresDetected: number;
+  failuresTotal: number;
+  healthyAlarmRate: number;
+  healthyFalseAlarmEpisodes: number;
+}
+
 export interface Alert {
-  id: number;
+  id: string;           // deterministic from the start time, so replays never duplicate alerts
   start: string;
   end: string | null;
   peakRatio: number;
@@ -25,4 +44,6 @@ export interface Alert {
   summary: string;
   failureAfterHours: number | null;
   recovery: boolean;   // opened within 48h after a recorded failure (pump restarting)
+  acknowledgedBy?: string;
+  acknowledgedAt?: string;
 }

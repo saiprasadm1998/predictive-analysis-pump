@@ -13,8 +13,10 @@ export interface Reading {
   run_below: number
 }
 
+export interface Me { username: string; role: 'viewer' | 'operator' | 'admin' }
+
 export interface Alert {
-  id: number
+  id: string
   start: string
   end: string | null
   peakRatio: number
@@ -25,6 +27,8 @@ export interface Alert {
   summary: string
   failureAfterHours: number | null
   recovery: boolean
+  acknowledgedBy?: string
+  acknowledgedAt?: string
 }
 
 export interface ReplayState {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, connectLive } from './api'
-import type { Alert, Meta, Reading, ReplayState, Scenario, Series } from './types'
+import type { Alert, Me, Meta, Reading, ReplayState, Scenario, Series } from './types'
 import { HOUR, fmtT, parseT } from './time'
 import type { Pt } from '../components/LineChart'
 
@@ -15,6 +15,7 @@ export function useLive(onAuthLost: () => void) {
   const [health, setHealth] = useState<Pt[]>([])
   const [loadingWindow, setLoadingWindow] = useState(false)
   const [sensors, setSensors] = useState<Series | null>(null)
+  const [me, setMe] = useState<Me | null>(null)
   const [error, setError] = useState('')
   const lastX = useRef(0)
   const sensorKey = useRef('')
@@ -49,9 +50,9 @@ export function useLive(onAuthLost: () => void) {
     let closed = false
     ;(async () => {
       try {
-        const [s, m, sc, al] = await Promise.all([api.state(), api.meta(), api.scenarios(), api.alerts()])
+        const [s, m, sc, al, who] = await Promise.all([api.state(), api.meta(), api.scenarios(), api.alerts(), api.me()])
         if (closed) return
-        setReplay(s); setMeta(m); setScenarios(sc); setAlerts(al)
+        setMe(who); setReplay(s); setMeta(m); setScenarios(sc); setAlerts(al)
         if (s.latest) setReading(s.latest)
         await loadWindow(s.t)
         off = connectLive((msg) => {
@@ -97,7 +98,7 @@ export function useLive(onAuthLost: () => void) {
   }, [fail])
 
   return {
-    replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
+    me, replay, reading, alerts, meta, scenarios, health, loadingWindow, sensors, error,
     play: () => act(api.play), pause: () => act(api.pause),
     setSpeed: (n: number) => act(() => api.speed(n)),
     seek: (t: string) => act(() => api.seek(t), true),
@@ -105,7 +106,7 @@ export function useLive(onAuthLost: () => void) {
       await act(() => api.seek(s.startAt), true)
       await act(() => api.play())
     },
-    ack: async (id: number) => {
+    ack: async (id: string) => {
       try { const a = await api.ack(id); setAlerts((p) => p.map((x) => (x.id === a.id ? a : x))) } catch (e) { fail(e) }
     },
   }
