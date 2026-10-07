@@ -24,7 +24,9 @@ export async function login(username: string, password: string): Promise<void> {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ username, password }),
   })
-  if (!res.ok) throw new Error('Wrong username or password')
+  if (res.status === 401) throw new Error('Wrong username or password')
+  if (res.status === 429) throw new Error('Too many failed attempts. Wait 15 minutes or restart the API.')
+  if (!res.ok) throw new Error(`Cannot reach the API (status ${res.status}). Is it running on port 4000?`)
   token = ((await res.json()) as { token: string }).token
   try { localStorage.setItem('pg_token', token) } catch { /* ignore */ }
 }

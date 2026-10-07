@@ -1,5 +1,5 @@
 {
-  "threshold": 223.22150753683218,
+  "threshold": 223.2215075368695,
   "lookback_hours": 72,
   "persistence_minutes": 30,
   "failures_detected": 6,
