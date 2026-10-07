@@ -7,3 +7,4 @@ __pycache__/
 ml/data/*.csv
 ml/artifacts/*.joblib
 .DS_Store
+_to_delete/
